@@ -1,38 +1,43 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { type Mission, type InsertMission, missions } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getAllMissions(): Promise<Mission[]>;
+  getMission(id: string): Promise<Mission | undefined>;
+  createMission(mission: InsertMission): Promise<Mission>;
+  updateMission(id: string, mission: Partial<InsertMission>): Promise<Mission | undefined>;
+  deleteMission(id: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getAllMissions(): Promise<Mission[]> {
+    return db.select().from(missions).orderBy(desc(missions.createdAt));
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getMission(id: string): Promise<Mission | undefined> {
+    const [mission] = await db.select().from(missions).where(eq(missions.id, id));
+    return mission;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createMission(mission: InsertMission): Promise<Mission> {
+    const [created] = await db.insert(missions).values(mission).returning();
+    return created;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateMission(id: string, mission: Partial<InsertMission>): Promise<Mission | undefined> {
+    const [updated] = await db
+      .update(missions)
+      .set({ ...mission, updatedAt: new Date() })
+      .where(eq(missions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteMission(id: string): Promise<boolean> {
+    const result = await db.delete(missions).where(eq(missions.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

@@ -191,10 +191,14 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
         <CardHeader>
           <CardTitle>Etabli par (Nettoyage)</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2 max-w-md">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
             <Label htmlFor="etabliParNettoyage">Nom</Label>
             <Input id="etabliParNettoyage" {...register("etabliParNettoyage")} placeholder="Nom du responsable" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="visaNettoyage">Visa</Label>
+            <Input id="visaNettoyage" {...register("visaNettoyage")} placeholder="Visa" />
           </div>
         </CardContent>
       </Card>
@@ -259,10 +263,14 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
         <CardHeader>
           <CardTitle>Etabli par (Controles)</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2 max-w-md">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
             <Label htmlFor="etabliParControles">Nom</Label>
             <Input id="etabliParControles" {...register("etabliParControles")} placeholder="Nom du responsable" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="visaControles">Visa</Label>
+            <Input id="visaControles" {...register("visaControles")} placeholder="Visa" />
           </div>
         </CardContent>
       </Card>

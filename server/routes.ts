@@ -93,9 +93,27 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid template data", details: parsed.error });
       }
-      const updated = await storage.updateMission(req.params.id, {
-        templateData: parsed.data,
-      } as any);
+      const td = parsed.data;
+
+      // Auto-fill mission fields from rapport data
+      const missionUpdate: Record<string, any> = {
+        templateData: td,
+      };
+      if (td.nomReservoir || td.commune) {
+        missionUpdate.title = `Nettoyage ${td.nomReservoir || ""}${td.nomReservoir && td.commune ? " - " : ""}${td.commune || ""}`.trim();
+      }
+      if (td.commune) {
+        missionUpdate.location = td.commune;
+        missionUpdate.clientName = td.nomEntreprise || td.commune;
+      }
+      if (td.date) {
+        missionUpdate.startDate = new Date(td.date);
+      }
+      if (td.observations) {
+        missionUpdate.description = td.observations;
+      }
+
+      const updated = await storage.updateMission(req.params.id, missionUpdate as any);
       res.json(parsed.data);
     } catch (error) {
       console.error("Error saving template data:", error);

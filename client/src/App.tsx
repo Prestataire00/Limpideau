@@ -13,7 +13,6 @@ import MissionsPage from "@/pages/missions";
 import MissionNewPage from "@/pages/mission-new";
 import MissionDetailPage from "@/pages/mission-detail";
 import MissionEditPage from "@/pages/mission-edit";
-import MissionTemplatePage from "@/pages/mission-template";
 import MissionRapportPage from "@/pages/mission-rapport";
 import TemplatesPage from "@/pages/templates";
 import SettingsPage from "@/pages/settings";
@@ -26,7 +25,6 @@ function Router() {
       <Route path="/missions/new" component={MissionNewPage} />
       <Route path="/missions/:id" component={MissionDetailPage} />
       <Route path="/missions/:id/edit" component={MissionEditPage} />
-      <Route path="/missions/:id/template" component={MissionTemplatePage} />
       <Route path="/missions/:id/rapport" component={MissionRapportPage} />
       <Route path="/templates" component={TemplatesPage} />
       <Route path="/settings" component={SettingsPage} />

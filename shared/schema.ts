@@ -17,24 +17,24 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-// Liste des équipements pour la visite des réservoirs
+// Liste des équipements pour la visite des réservoirs (conforme EP 9001-1)
 export const visiteEquipements = [
-  "Cuve / Réservoir",
-  "Couvercle / Trappe",
-  "Joint d'étanchéité",
-  "Trop-plein",
-  "Ventilation",
-  "Canalisation d'arrivée",
-  "Canalisation de départ",
-  "Robinet flotteur",
-  "Vanne d'arrêt",
-  "Crépine",
-  "Échelle / Crosse",
-  "Clôture / Portail",
-  "Local technique",
-  "Compteur",
-  "Chloration",
-  "Instrumentation",
+  "Gouttières",
+  "Portes",
+  "Fenêtres",
+  "Echelles",
+  "Rambardes",
+  "Trappes d'accès",
+  "Canalisations",
+  "Vannes",
+  "Crépines",
+  "Grilles de ventilation",
+  "Flotteur",
+  "Poires de niveau",
+  "Sondes de niveau",
+  "Eclairages",
+  "Equipements tiers",
+  "Equipements sécurité",
 ] as const;
 
 // Schéma Zod pour les données du rapport template
@@ -73,6 +73,7 @@ export const templateDataSchema = z.object({
 
   // Établi par (nettoyage)
   etabliParNettoyage: z.string().default(""),
+  visaNettoyage: z.string().default(""),
 
   // Contrôles qualité
   dateAnalyse: z.string().default(""),
@@ -83,6 +84,7 @@ export const templateDataSchema = z.object({
 
   // Établi par (contrôles)
   etabliParControles: z.string().default(""),
+  visaControles: z.string().default(""),
 
   // Visite - 16 équipements
   visite: z.record(z.string(), visiteItemSchema).default({}),

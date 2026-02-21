@@ -34,6 +34,8 @@ export default function MissionRapportPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/missions", missionId, "template-data"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/missions", missionId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/missions"] });
       toast({ title: "Enregistre", description: "Les donnees du rapport ont ete sauvegardees." });
     },
     onError: () => {

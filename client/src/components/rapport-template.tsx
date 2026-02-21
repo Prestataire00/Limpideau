@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Printer, Mail, Copy, Check } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { visiteEquipements, type TemplateData } from "@shared/schema";
 import type { Mission } from "@shared/schema";
+import suezLogo from "@assets/image_1771672165186.png";
 
 interface RapportTemplateProps {
   mission: Mission;
@@ -33,10 +32,11 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
     window.open(`mailto:${mission.clientEmail || ""}?subject=${subject}&body=${body}`);
   };
 
-  const encrassementLabel = ["", "Propre", "Peu encrasse", "Moyennement encrasse", "Encrasse", "Tres encrasse"];
+  const cb = (checked: boolean) => checked ? "☑" : "☐";
 
   return (
     <div className="space-y-4">
+      {/* Action buttons - hidden when printing */}
       <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
         <Button variant="outline" size="sm" onClick={handleCopy}>
           {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
@@ -54,232 +54,276 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
         </Button>
       </div>
 
-      <Card className="print:shadow-none print:border-0 max-w-4xl mx-auto">
-        <CardContent className="p-8 space-y-6 print:p-4">
-          {/* Titre */}
-          <div className="text-center border-b-2 border-primary pb-4">
-            <h1 className="text-xl font-bold uppercase tracking-wide">
-              Rapport de Nettoyage et Visite des Reservoirs
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">EP 9001-1</p>
-          </div>
+      {/* Print styles */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .rapport-excel, .rapport-excel * { visibility: visible; }
+          .rapport-excel {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 210mm;
+            margin: 0;
+            padding: 10mm;
+            font-size: 9pt;
+          }
+          .rapport-excel table { page-break-inside: auto; }
+          .rapport-excel tr { page-break-inside: avoid; }
+          .rapport-page-break { page-break-before: always; }
+        }
+      `}</style>
 
-          {/* En-tete */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 font-semibold text-sm uppercase">En-tete</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border">
-              <Cell label="Commune" value={data.commune} />
-              <Cell label="N. Cuve" value={data.numeroCuve} />
-              <Cell label="Reservoir" value={data.nomReservoir} />
-              <Cell label="Volume" value={data.volume ? `${data.volume} m3` : ""} />
-              <Cell label="Date" value={data.date} />
-              <Cell label="Heure debut" value={data.heureDebut} />
-              <Cell label="Heure fin" value={data.heureFin} />
-            </div>
-          </div>
+      {/* Rapport content - Excel faithful reproduction */}
+      <div className="rapport-excel max-w-4xl mx-auto bg-white text-black border border-black" style={{ fontFamily: "Arial, sans-serif" }}>
 
-          {/* Nettoyage */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 font-semibold text-sm uppercase">Nettoyage</div>
-            <div className="p-4 space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-sm text-muted-foreground">Motif :</span>
-                  <div className="mt-1 space-y-1">
-                    <CheckItem label="Entretien annuel" checked={data.motifEntretienAnnuel} />
-                    {data.motifAutres && <p className="text-sm ml-6">Autres : {data.motifAutres}</p>}
-                  </div>
+        {/* === HEADER: Logo + Title === */}
+        <table className="w-full border-collapse" style={{ borderBottom: "2px solid black" }}>
+          <tbody>
+            <tr>
+              <td className="p-3 align-middle" style={{ width: "150px" }}>
+                <img src={suezLogo} alt="SUEZ" style={{ width: "130px", height: "auto" }} />
+              </td>
+              <td className="text-center p-3 align-middle">
+                <div style={{ fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>
+                  Rapport Nettoyage et Visite des Reservoirs
                 </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Type :</span>
-                  <div className="mt-1 space-y-1">
-                    <CheckItem label="Chimique" checked={data.typeChimique} />
-                    {data.typeAutres && <p className="text-sm ml-6">Autres : {data.typeAutres}</p>}
-                  </div>
-                </div>
-              </div>
-              <Separator />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-sm text-muted-foreground">Produits employes</span>
-                  <p className="font-medium">{data.produitsEmployes || "-"}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Quantite</span>
-                  <p className="font-medium">{data.quantite || "-"}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+              </td>
+              <td className="text-right p-3 align-middle" style={{ width: "120px" }}>
+                <div style={{ fontSize: "10px", color: "#666" }}>EP 9001-1</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-          {/* Intervenants */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 font-semibold text-sm uppercase">Intervenants</div>
-            <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <CheckItem label="Equipe LDE" checked={data.equipeLDE} />
-                  {data.nomsAgents && (
-                    <p className="text-sm ml-6 mt-1">Agents : {data.nomsAgents}</p>
-                  )}
+        {/* === SITE === */}
+        <SectionHeader title="SITE" />
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr>
+              <Td label="Commune" value={data.commune} />
+              <Td label="N° cuve" value={data.numeroCuve} />
+            </tr>
+            <tr>
+              <Td label="Nom du reservoir" value={data.nomReservoir} />
+              <Td label="Volume (m³)" value={data.volume} />
+            </tr>
+          </tbody>
+        </table>
+
+        {/* === DATE === */}
+        <SectionHeader title="DATE" />
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr>
+              <Td label="Date" value={data.date} />
+              <Td label="Heure debut" value={data.heureDebut} />
+              <Td label="Heure fin" value={data.heureFin} />
+            </tr>
+          </tbody>
+        </table>
+
+        {/* === NETTOYAGE === */}
+        <SectionHeader title="NETTOYAGE" />
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr>
+              <td className="border border-black p-2 align-top" style={{ width: "50%" }}>
+                <div className="text-xs font-bold mb-1">Motif</div>
+                <div className="text-sm space-y-1">
+                  <div>{cb(data.motifEntretienAnnuel)} Entretien annuel</div>
+                  <div>{cb(!!data.motifAutres)} Autres : {data.motifAutres || ""}</div>
                 </div>
-                <div>
-                  <CheckItem label="Sous-traitant" checked={data.sousTraitant} />
-                  {data.nomEntreprise && (
-                    <p className="text-sm ml-6 mt-1">Entreprise : {data.nomEntreprise}</p>
-                  )}
+              </td>
+              <td className="border border-black p-2 align-top">
+                <div className="text-xs font-bold mb-1">Type</div>
+                <div className="text-sm space-y-1">
+                  <div>{cb(data.typeChimique)} Chimique</div>
+                  <div>{cb(!!data.typeAutres)} Autres : {data.typeAutres || ""}</div>
                 </div>
-              </div>
-            </div>
-          </div>
+              </td>
+            </tr>
+            <tr>
+              <Td label="Produits employes" value={data.produitsEmployes} />
+              <Td label="Quantite" value={data.quantite} />
+            </tr>
+          </tbody>
+        </table>
 
-          {/* Observations */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 font-semibold text-sm uppercase">Observations</div>
-            <div className="p-4 space-y-3">
-              <div>
-                <span className="text-sm text-muted-foreground">Etat d'encrassement :</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <div
-                        key={n}
-                        className={`w-6 h-6 rounded border text-xs flex items-center justify-center font-medium ${
-                          n <= data.etatEncrassement
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-border"
-                        }`}
-                      >
-                        {n}
-                      </div>
-                    ))}
-                  </div>
-                  <span className="text-sm font-medium ml-2">
-                    {encrassementLabel[data.etatEncrassement] || ""}
-                  </span>
+        {/* === INTERVENANTS === */}
+        <SectionHeader title="INTERVENANTS" />
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr>
+              <td className="border border-black p-2 align-top" style={{ width: "50%" }}>
+                <div className="text-sm">
+                  <div>{cb(data.equipeLDE)} Equipe Lyonnaise des Eaux</div>
+                  <div className="mt-1 text-xs">Noms agents : {data.nomsAgents || ""}</div>
                 </div>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Observations :</span>
-                <p className="mt-1 whitespace-pre-wrap">{data.observations || "-"}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Etabli par nettoyage */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 font-semibold text-sm uppercase">Etabli par (Nettoyage)</div>
-            <div className="p-4">
-              <span className="text-sm text-muted-foreground">Nom :</span>
-              <p className="font-medium">{data.etabliParNettoyage || "-"}</p>
-            </div>
-          </div>
-
-          {/* Controles qualite */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 font-semibold text-sm uppercase">Controles qualite</div>
-            <div className="p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-sm text-muted-foreground">Date d'analyse</span>
-                  <p className="font-medium">{data.dateAnalyse || "-"}</p>
+              </td>
+              <td className="border border-black p-2 align-top">
+                <div className="text-sm">
+                  <div>{cb(data.sousTraitant)} Sous-traitant</div>
+                  <div className="mt-1 text-xs">Nom entreprise : {data.nomEntreprise || ""}</div>
                 </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Chlore residuel</span>
-                  <p className="font-medium">{data.chloreResiduel || "-"}</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* === OBSERVATIONS === */}
+        <SectionHeader title="OBSERVATIONS" />
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr>
+              <td className="border border-black p-2" style={{ width: "200px" }}>
+                <div className="text-xs font-bold mb-1">Encrassement (1 a 5)</div>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <span
+                      key={n}
+                      className="inline-flex items-center justify-center text-xs font-bold"
+                      style={{
+                        width: "22px",
+                        height: "22px",
+                        border: "1px solid black",
+                        backgroundColor: n <= data.etatEncrassement ? "#0032A0" : "white",
+                        color: n <= data.etatEncrassement ? "white" : "black",
+                      }}
+                    >
+                      {n}
+                    </span>
+                  ))}
                 </div>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Observations :</span>
-                <p className="mt-1 whitespace-pre-wrap">{data.observationsControle || "-"}</p>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Bacteriologie :</span>
-                <div className="flex gap-6 mt-1">
-                  <CheckItem label="Conforme" checked={data.bacterioConforme} />
-                  <CheckItem label="Non conforme" checked={data.bacterioNonConforme} />
+              </td>
+              <td className="border border-black p-2">
+                <div className="text-xs font-bold mb-1">Autres observations</div>
+                <div className="text-sm whitespace-pre-wrap min-h-[40px]">{data.observations || ""}</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* === ETABLI PAR (Nettoyage) === */}
+        <SectionHeader title="ETABLI PAR" />
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr>
+              <Td label="Nom" value={data.etabliParNettoyage} />
+              <Td label="Visa" value={data.visaNettoyage} />
+            </tr>
+          </tbody>
+        </table>
+
+        {/* === CONTROLES QUALITE === */}
+        <SectionHeader title="CONTROLES QUALITE" />
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr>
+              <Td label="Date analyse" value={data.dateAnalyse} />
+              <Td label="Chlore residuel" value={data.chloreResiduel} />
+            </tr>
+            <tr>
+              <td className="border border-black p-2" colSpan={2}>
+                <div className="text-xs font-bold mb-1">Observations</div>
+                <div className="text-sm whitespace-pre-wrap min-h-[30px]">{data.observationsControle || ""}</div>
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-black p-2" colSpan={2}>
+                <div className="text-xs font-bold mb-1">Bacteriologie</div>
+                <div className="text-sm flex gap-6">
+                  <span>{cb(data.bacterioConforme)} Conforme</span>
+                  <span>{cb(data.bacterioNonConforme)} Non conforme</span>
                 </div>
-              </div>
-            </div>
-          </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-          {/* Etabli par controles */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 font-semibold text-sm uppercase">Etabli par (Controles)</div>
-            <div className="p-4">
-              <span className="text-sm text-muted-foreground">Nom :</span>
-              <p className="font-medium">{data.etabliParControles || "-"}</p>
-            </div>
-          </div>
+        {/* === ETABLI PAR (Controles) === */}
+        <SectionHeader title="ETABLI PAR" />
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr>
+              <Td label="Nom" value={data.etabliParControles} />
+              <Td label="Visa" value={data.visaControles} />
+            </tr>
+          </tbody>
+        </table>
 
-          {/* Visite des equipements */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 font-semibold text-sm uppercase">Visite des equipements</div>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="text-left py-2 px-3 font-medium">Equipement</th>
-                    <th className="text-center py-2 px-3 font-medium w-16">Etat</th>
-                    <th className="text-left py-2 px-3 font-medium">Observations</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visiteEquipements.map((equip) => {
-                    const item = data.visite?.[equip];
-                    return (
-                      <tr key={equip} className="border-b last:border-0">
-                        <td className="py-2 px-3">{equip}</td>
-                        <td className="py-2 px-3 text-center">
-                          {item?.bon ? (
-                            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-green-100 text-green-700 text-xs font-bold dark:bg-green-900 dark:text-green-300">
-                              &#10003;
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted text-muted-foreground text-xs">
-                              -
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3 text-muted-foreground">
-                          {item?.observations || "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+        {/* === VISITE === */}
+        <div className="rapport-page-break" />
+        <SectionHeader title="VISITE" />
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr style={{ backgroundColor: "#E8E8E8" }}>
+              <th className="border border-black p-2 text-left font-bold text-xs">Equipement</th>
+              <th className="border border-black p-2 text-center font-bold text-xs" style={{ width: "60px" }}>Bon</th>
+              <th className="border border-black p-2 text-left font-bold text-xs">Observations</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visiteEquipements.map((equip) => {
+              const item = data.visite?.[equip];
+              return (
+                <tr key={equip}>
+                  <td className="border border-black p-1.5 text-xs">{equip}</td>
+                  <td className="border border-black p-1.5 text-center text-sm">
+                    {cb(item?.bon ?? false)}
+                  </td>
+                  <td className="border border-black p-1.5 text-xs">
+                    {item?.observations || ""}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
-function Cell({ label, value }: { label: string; value?: string }) {
-  return (
-    <div className="bg-background p-3">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <p className="font-medium text-sm">{value || "-"}</p>
-    </div>
-  );
-}
+        {/* === PHOTOS === */}
+        <SectionHeader title="PHOTOS" />
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr>
+              <td className="border border-black p-3 text-center align-top" style={{ width: "50%", height: "200px" }}>
+                <div className="text-xs font-bold mb-2" style={{ color: "#0032A0" }}>PHOTO AVANT</div>
+                <div className="border border-dashed border-gray-400 flex items-center justify-center" style={{ height: "160px" }}>
+                  <span className="text-gray-400 text-xs">Zone photo avant intervention</span>
+                </div>
+              </td>
+              <td className="border border-black p-3 text-center align-top" style={{ height: "200px" }}>
+                <div className="text-xs font-bold mb-2" style={{ color: "#0032A0" }}>PHOTO APRES</div>
+                <div className="border border-dashed border-gray-400 flex items-center justify-center" style={{ height: "160px" }}>
+                  <span className="text-gray-400 text-xs">Zone photo apres intervention</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-function CheckItem({ label, checked }: { label: string; checked: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className={`w-4 h-4 rounded border flex items-center justify-center text-xs ${
-          checked
-            ? "bg-primary text-primary-foreground border-primary"
-            : "bg-background border-border"
-        }`}
-      >
-        {checked && "✓"}
       </div>
-      <span className="text-sm">{label}</span>
     </div>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div
+      className="px-3 py-1.5 font-bold text-xs uppercase tracking-wide text-white"
+      style={{ backgroundColor: "#0032A0" }}
+    >
+      {title}
+    </div>
+  );
+}
+
+function Td({ label, value }: { label: string; value?: string }) {
+  return (
+    <td className="border border-black p-2">
+      <div className="text-xs font-bold">{label}</div>
+      <div className="text-sm">{value || ""}</div>
+    </td>
   );
 }
 
@@ -288,11 +332,13 @@ function generateText(data: TemplateData): string {
     "RAPPORT DE NETTOYAGE ET VISITE DES RESERVOIRS",
     "EP 9001-1",
     "",
-    "=== EN-TETE ===",
+    "=== SITE ===",
     `Commune: ${data.commune || "-"}`,
-    `N. Cuve: ${data.numeroCuve || "-"}`,
+    `N° Cuve: ${data.numeroCuve || "-"}`,
     `Reservoir: ${data.nomReservoir || "-"}`,
-    `Volume: ${data.volume || "-"} m3`,
+    `Volume: ${data.volume || "-"} m³`,
+    "",
+    "=== DATE ===",
     `Date: ${data.date || "-"}`,
     `Heure debut: ${data.heureDebut || "-"}`,
     `Heure fin: ${data.heureFin || "-"}`,
@@ -312,10 +358,11 @@ function generateText(data: TemplateData): string {
     `Entreprise: ${data.nomEntreprise || "-"}`,
     "",
     "=== OBSERVATIONS ===",
-    `Etat encrassement: ${data.etatEncrassement}/5`,
+    `Encrassement: ${data.etatEncrassement}/5`,
     `Observations: ${data.observations || "-"}`,
     "",
     `Etabli par (Nettoyage): ${data.etabliParNettoyage || "-"}`,
+    `Visa: ${data.visaNettoyage || "-"}`,
     "",
     "=== CONTROLES QUALITE ===",
     `Date analyse: ${data.dateAnalyse || "-"}`,
@@ -324,6 +371,7 @@ function generateText(data: TemplateData): string {
     `Bacteriologie: ${data.bacterioConforme ? "Conforme" : data.bacterioNonConforme ? "Non conforme" : "-"}`,
     "",
     `Etabli par (Controles): ${data.etabliParControles || "-"}`,
+    `Visa: ${data.visaControles || "-"}`,
     "",
     "=== VISITE DES EQUIPEMENTS ===",
   ];

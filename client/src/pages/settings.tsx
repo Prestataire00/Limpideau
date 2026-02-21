@@ -74,7 +74,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Application</span>
-            <span>MissionCRM</span>
+            <span>Limpid'EAU</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Version</span>

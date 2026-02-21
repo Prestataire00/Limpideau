@@ -6,6 +6,7 @@ import { setupAuth } from "./auth";
 import { seed } from "./seed";
 
 const app = express();
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 declare module "http" {

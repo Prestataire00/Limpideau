@@ -1,7 +1,16 @@
 import { useState, useRef } from "react";
-import { Printer, Copy, Check, Download } from "lucide-react";
+import { Printer, Copy, Check, Download, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { visiteEquipements, type TemplateData } from "@shared/schema";
 import type { Mission } from "@shared/schema";
 import suezLogo from "@assets/image_1771672165186.png";
@@ -17,6 +26,9 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState(mission.clientEmail || "");
+  const [sendingEmail, setSendingEmail] = useState(false);
   const rapportRef = useRef<HTMLDivElement>(null);
 
   const generatePdf = async (): Promise<Blob | null> => {
@@ -69,6 +81,30 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
     }
   };
 
+  const handleSendEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailTo) return;
+    setSendingEmail(true);
+    try {
+      const blob = await generatePdf();
+      if (!blob) throw new Error("Impossible de générer le PDF");
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+      );
+      await apiRequest("POST", `/api/missions/${mission.id}/send-email`, {
+        to: emailTo,
+        pdfBase64: base64,
+      });
+      toast({ title: "Email envoyé", description: `Le rapport a été envoyé à ${emailTo}` });
+      setEmailDialogOpen(false);
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'envoyer l'email.", variant: "destructive" });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -103,11 +139,46 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
           <Download className="h-4 w-4 mr-2" />
           {generatingPdf ? "Generation..." : "PDF"}
         </Button>
-<Button variant="outline" size="sm" onClick={handlePrint}>
+        <Button variant="outline" size="sm" onClick={() => setEmailDialogOpen(true)}>
+          <Mail className="h-4 w-4 mr-2" />
+          Envoyer par email
+        </Button>
+        <Button variant="outline" size="sm" onClick={handlePrint}>
           <Printer className="h-4 w-4 mr-2" />
           Imprimer
         </Button>
       </div>
+
+      {/* Email Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Envoyer le rapport par email</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSendEmail} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email-to">Adresse email du destinataire</Label>
+              <Input
+                id="email-to"
+                type="email"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                placeholder="exemple@email.com"
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEmailDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={sendingEmail}>
+                {sendingEmail && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                {sendingEmail ? "Envoi..." : "Envoyer"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Print styles */}
       <style>{`

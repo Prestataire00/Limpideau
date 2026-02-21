@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertMissionSchema, insertDocumentSchema, templateDataSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, hashPassword } from "./auth";
+import { sendReportEmail } from "./email";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -252,6 +253,35 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching daily extraction:", error);
       res.status(500).json({ error: "Failed to fetch daily extraction" });
+    }
+  });
+
+  // Send report by email
+  app.post("/api/missions/:id/send-email", requireAuth, async (req, res) => {
+    try {
+      const mission = await storage.getMission(req.params.id as string);
+      if (!mission) {
+        return res.status(404).json({ error: "Mission non trouvée" });
+      }
+      const { to, pdfBase64 } = req.body;
+      if (!to || !pdfBase64) {
+        return res.status(400).json({ error: "Destinataire et PDF requis" });
+      }
+      const pdfBuffer = Buffer.from(pdfBase64, "base64");
+      const filename = `Rapport_${mission.title?.replace(/[^a-zA-Z0-9]/g, "_") || "mission"}.pdf`;
+
+      await sendReportEmail({
+        to,
+        subject: `Rapport de mission - ${mission.title}`,
+        text: `Veuillez trouver ci-joint le rapport de la mission "${mission.title}".\n\nCordialement,\nLimpid'EAU`,
+        pdfBuffer,
+        pdfFilename: filename,
+      });
+
+      res.json({ message: "Email envoyé avec succès" });
+    } catch (error) {
+      console.error("Error sending email:", error);
+      res.status(500).json({ error: "Échec de l'envoi de l'email" });
     }
   });
 

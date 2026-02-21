@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMissionSchema } from "@shared/schema";
+import { insertMissionSchema, insertDocumentSchema, templateDataSchema } from "@shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -65,6 +65,44 @@ export async function registerRoutes(
     }
   });
 
+  // Get template data for a mission
+  app.get("/api/missions/:id/template-data", async (req, res) => {
+    try {
+      const mission = await storage.getMission(req.params.id);
+      if (!mission) {
+        return res.status(404).json({ error: "Mission not found" });
+      }
+      const data = mission.templateData
+        ? templateDataSchema.parse(mission.templateData)
+        : templateDataSchema.parse({});
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching template data:", error);
+      res.status(500).json({ error: "Failed to fetch template data" });
+    }
+  });
+
+  // Save template data for a mission
+  app.put("/api/missions/:id/template-data", async (req, res) => {
+    try {
+      const mission = await storage.getMission(req.params.id);
+      if (!mission) {
+        return res.status(404).json({ error: "Mission not found" });
+      }
+      const parsed = templateDataSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid template data", details: parsed.error });
+      }
+      const updated = await storage.updateMission(req.params.id, {
+        templateData: parsed.data,
+      } as any);
+      res.json(parsed.data);
+    } catch (error) {
+      console.error("Error saving template data:", error);
+      res.status(500).json({ error: "Failed to save template data" });
+    }
+  });
+
   // Delete mission
   app.delete("/api/missions/:id", async (req, res) => {
     try {
@@ -76,6 +114,78 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting mission:", error);
       res.status(500).json({ error: "Failed to delete mission" });
+    }
+  });
+
+  // Get all documents
+  app.get("/api/documents", async (req, res) => {
+    try {
+      const documents = await storage.getAllDocuments();
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({ error: "Failed to fetch documents" });
+    }
+  });
+
+  // Get single document
+  app.get("/api/documents/:id", async (req, res) => {
+    try {
+      const document = await storage.getDocument(req.params.id);
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      res.json(document);
+    } catch (error) {
+      console.error("Error fetching document:", error);
+      res.status(500).json({ error: "Failed to fetch document" });
+    }
+  });
+
+  // Create document
+  app.post("/api/documents", async (req, res) => {
+    try {
+      const parsed = insertDocumentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid document data", details: parsed.error });
+      }
+      const document = await storage.createDocument(parsed.data);
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error creating document:", error);
+      res.status(500).json({ error: "Failed to create document" });
+    }
+  });
+
+  // Update document
+  app.patch("/api/documents/:id", async (req, res) => {
+    try {
+      const parsed = insertDocumentSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid document data", details: parsed.error });
+      }
+      const document = await storage.updateDocument(req.params.id, parsed.data);
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      res.json(document);
+    } catch (error) {
+      console.error("Error updating document:", error);
+      res.status(500).json({ error: "Failed to update document" });
+    }
+  });
+
+  // Delete document
+  app.delete("/api/documents/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteDocument(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ error: "Failed to delete document" });
     }
   });
 

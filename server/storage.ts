@@ -1,4 +1,4 @@
-import { type Mission, type InsertMission, missions } from "@shared/schema";
+import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
@@ -8,6 +8,12 @@ export interface IStorage {
   createMission(mission: InsertMission): Promise<Mission>;
   updateMission(id: string, mission: Partial<InsertMission>): Promise<Mission | undefined>;
   deleteMission(id: string): Promise<boolean>;
+
+  getAllDocuments(): Promise<Document[]>;
+  getDocument(id: string): Promise<Document | undefined>;
+  createDocument(document: InsertDocument): Promise<Document>;
+  updateDocument(id: string, document: Partial<InsertDocument>): Promise<Document | undefined>;
+  deleteDocument(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -36,6 +42,34 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMission(id: string): Promise<boolean> {
     const result = await db.delete(missions).where(eq(missions.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getAllDocuments(): Promise<Document[]> {
+    return db.select().from(documents).orderBy(desc(documents.createdAt));
+  }
+
+  async getDocument(id: string): Promise<Document | undefined> {
+    const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    return document;
+  }
+
+  async createDocument(document: InsertDocument): Promise<Document> {
+    const [created] = await db.insert(documents).values(document).returning();
+    return created;
+  }
+
+  async updateDocument(id: string, document: Partial<InsertDocument>): Promise<Document | undefined> {
+    const [updated] = await db
+      .update(documents)
+      .set({ ...document, updatedAt: new Date() })
+      .where(eq(documents.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDocument(id: string): Promise<boolean> {
+    const result = await db.delete(documents).where(eq(documents.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }

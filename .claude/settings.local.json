@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run db:push:*)",
+      "Bash(npm run check:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(which node:*)",
+      "Bash(npm ls:*)",
+      "Bash(tail:*)",
+      "Bash(node:*)",
+      "Bash(head:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

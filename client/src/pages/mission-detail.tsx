@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, Edit, FileText, Calendar, MapPin, User, Mail, Phone, Euro } from "lucide-react";
+import { ArrowLeft, Edit, FileText, ClipboardList, Calendar, MapPin, User, Mail, Phone, Euro } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,12 @@ export default function MissionDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Link href={`/missions/${mission.id}/rapport`}>
+            <Button variant="outline" data-testid="button-rapport">
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Rapport Reservoir
+            </Button>
+          </Link>
           <Link href={`/missions/${mission.id}/template`}>
             <Button variant="outline" data-testid="button-view-template">
               <FileText className="h-4 w-4 mr-2" />

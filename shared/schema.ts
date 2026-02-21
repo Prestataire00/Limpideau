@@ -58,14 +58,23 @@ export const templateDataSchema = z.object({
   motifAutres: z.string().default(""),
   typeChimique: z.boolean().default(false),
   typeAutres: z.string().default(""),
-  produitsEmployes: z.string().default(""),
+  produitsEmployes: z.preprocess(
+    (val) => Array.isArray(val) ? val : typeof val === "string" && val ? [val] : [],
+    z.array(z.string())
+  ).default([]),
   quantite: z.string().default(""),
 
   // Intervenants
   equipeLDE: z.boolean().default(false),
   sousTraitant: z.boolean().default(false),
-  nomsAgents: z.string().default(""),
-  nomEntreprise: z.string().default(""),
+  nomsAgents: z.preprocess(
+    (val) => Array.isArray(val) ? val : typeof val === "string" && val ? [val] : [],
+    z.array(z.string())
+  ).default([]),
+  nomsEntreprises: z.preprocess(
+    (val) => Array.isArray(val) ? val : typeof val === "string" && val ? [val] : ["Limpid'EAU"],
+    z.array(z.string())
+  ).default(["Limpid'EAU"]),
 
   // Observations
   etatEncrassement: z.number().min(1).max(5).default(1),
@@ -73,7 +82,7 @@ export const templateDataSchema = z.object({
 
   // Établi par (nettoyage)
   etabliParNettoyage: z.string().default(""),
-  visaNettoyage: z.string().default(""),
+  signatureNettoyage: z.string().default(""), // base64 PNG data URL
 
   // Contrôles qualité
   dateAnalyse: z.string().default(""),
@@ -84,7 +93,11 @@ export const templateDataSchema = z.object({
 
   // Établi par (contrôles)
   etabliParControles: z.string().default(""),
-  visaControles: z.string().default(""),
+  signatureControles: z.string().default(""), // base64 PNG data URL
+
+  // Photos avant/après (base64 data URLs, 2 max chaque)
+  photosAvant: z.array(z.string()).default([]),
+  photosApres: z.array(z.string()).default([]),
 
   // Visite - 16 équipements
   visite: z.record(z.string(), visiteItemSchema).default({}),
@@ -125,6 +138,17 @@ export const insertMissionSchema = createInsertSchema(missions, {
 
 export type InsertMission = z.infer<typeof insertMissionSchema>;
 export type Mission = typeof missions.$inferSelect;
+
+// Table des signatures mémorisées par nom
+export const signatures = pgTable("signatures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  data: text("data").notNull(), // base64 PNG data URL
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Signature = typeof signatures.$inferSelect;
 
 export const documentTypes = ["text", "file"] as const;
 export type DocumentType = typeof documentTypes[number];

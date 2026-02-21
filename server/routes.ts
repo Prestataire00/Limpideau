@@ -104,10 +104,13 @@ export async function registerRoutes(
       }
       if (td.commune) {
         missionUpdate.location = td.commune;
-        missionUpdate.clientName = td.nomEntreprise || td.commune;
+        missionUpdate.clientName = (td.nomsEntreprises?.length ? td.nomsEntreprises[0] : "") || td.commune;
       }
       if (td.date) {
-        missionUpdate.startDate = new Date(td.date);
+        const parsedDate = new Date(td.date);
+        if (!isNaN(parsedDate.getTime())) {
+          missionUpdate.startDate = parsedDate;
+        }
       }
       if (td.observations) {
         missionUpdate.description = td.observations;
@@ -204,6 +207,35 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting document:", error);
       res.status(500).json({ error: "Failed to delete document" });
+    }
+  });
+
+  // Get signature by name
+  app.get("/api/signatures/:name", async (req, res) => {
+    try {
+      const sig = await storage.getSignatureByName(req.params.name);
+      if (!sig) {
+        return res.status(404).json({ error: "Signature not found" });
+      }
+      res.json(sig);
+    } catch (error) {
+      console.error("Error fetching signature:", error);
+      res.status(500).json({ error: "Failed to fetch signature" });
+    }
+  });
+
+  // Save signature for a name
+  app.put("/api/signatures/:name", async (req, res) => {
+    try {
+      const { data } = req.body;
+      if (!data) {
+        return res.status(400).json({ error: "Missing signature data" });
+      }
+      const sig = await storage.upsertSignature(req.params.name, data);
+      res.json(sig);
+    } catch (error) {
+      console.error("Error saving signature:", error);
+      res.status(500).json({ error: "Failed to save signature" });
     }
   });
 

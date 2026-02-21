@@ -1,4 +1,4 @@
-import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents } from "@shared/schema";
+import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents, type Signature, signatures } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
@@ -14,6 +14,9 @@ export interface IStorage {
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(id: string, document: Partial<InsertDocument>): Promise<Document | undefined>;
   deleteDocument(id: string): Promise<boolean>;
+
+  getSignatureByName(name: string): Promise<Signature | undefined>;
+  upsertSignature(name: string, data: string): Promise<Signature>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -71,6 +74,27 @@ export class DatabaseStorage implements IStorage {
   async deleteDocument(id: string): Promise<boolean> {
     const result = await db.delete(documents).where(eq(documents.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getSignatureByName(name: string): Promise<Signature | undefined> {
+    const normalized = name.trim().toLowerCase();
+    const [sig] = await db.select().from(signatures).where(eq(signatures.name, normalized));
+    return sig;
+  }
+
+  async upsertSignature(name: string, data: string): Promise<Signature> {
+    const normalized = name.trim().toLowerCase();
+    const existing = await this.getSignatureByName(normalized);
+    if (existing) {
+      const [updated] = await db
+        .update(signatures)
+        .set({ data, updatedAt: new Date() })
+        .where(eq(signatures.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(signatures).values({ name: normalized, data }).returning();
+    return created;
   }
 }
 

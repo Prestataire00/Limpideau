@@ -33,6 +33,14 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
   };
 
   const cb = (checked: boolean) => checked ? "☑" : "☐";
+  const toArray = (val: unknown): string[] =>
+    Array.isArray(val) ? val : typeof val === "string" && val ? [val] : [];
+
+  const produits = toArray(data.produitsEmployes);
+  const agents = toArray(data.nomsAgents);
+  const entreprises = toArray(data.nomsEntreprises);
+  const pAvant = toArray(data.photosAvant);
+  const pApres = toArray(data.photosApres);
 
   return (
     <div className="space-y-4">
@@ -67,6 +75,14 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
             margin: 0;
             padding: 10mm;
             font-size: 9pt;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          .rapport-excel * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
           .rapport-excel table { page-break-inside: auto; }
           .rapport-excel tr { page-break-inside: avoid; }
@@ -90,7 +106,7 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
                 </div>
               </td>
               <td className="text-right p-3 align-middle" style={{ width: "120px" }}>
-                <div style={{ fontSize: "10px", color: "#666" }}>EP 9001-1</div>
+                <div style={{ fontSize: "10px", color: "#666" }}>E EP 9001-1</div>
               </td>
             </tr>
           </tbody>
@@ -144,7 +160,14 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
               </td>
             </tr>
             <tr>
-              <Td label="Produits employes" value={data.produitsEmployes} />
+              <td className="border border-black p-2">
+                <div className="text-xs font-bold">Produits employes</div>
+                <div className="text-sm">
+                  {produits.length > 0
+                    ? produits.map((p, i) => <div key={i}>- {p}</div>)
+                    : ""}
+                </div>
+              </td>
               <Td label="Quantite" value={data.quantite} />
             </tr>
           </tbody>
@@ -158,13 +181,23 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
               <td className="border border-black p-2 align-top" style={{ width: "50%" }}>
                 <div className="text-sm">
                   <div>{cb(data.equipeLDE)} Equipe Lyonnaise des Eaux</div>
-                  <div className="mt-1 text-xs">Noms agents : {data.nomsAgents || ""}</div>
+                  <div className="mt-1 text-xs">
+                    Noms agents :
+                    {agents.length > 0
+                      ? agents.map((a, i) => <div key={i} className="ml-2">- {a}</div>)
+                      : ""}
+                  </div>
                 </div>
               </td>
               <td className="border border-black p-2 align-top">
                 <div className="text-sm">
                   <div>{cb(data.sousTraitant)} Sous-traitant</div>
-                  <div className="mt-1 text-xs">Nom entreprise : {data.nomEntreprise || ""}</div>
+                  <div className="mt-1 text-xs">
+                    Entreprises :
+                    {entreprises.length > 0
+                      ? entreprises.map((e, i) => <div key={i} className="ml-2">- {e}</div>)
+                      : ""}
+                  </div>
                 </div>
               </td>
             </tr>
@@ -210,7 +243,14 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
           <tbody>
             <tr>
               <Td label="Nom" value={data.etabliParNettoyage} />
-              <Td label="Visa" value={data.visaNettoyage} />
+              <td className="border border-black p-2">
+                <div className="text-xs font-bold">Signature</div>
+                {data.signatureNettoyage ? (
+                  <img src={data.signatureNettoyage} alt="Signature" style={{ height: "50px", objectFit: "contain" }} />
+                ) : (
+                  <div style={{ height: "50px", borderBottom: "1px solid #ccc" }} />
+                )}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -247,7 +287,14 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
           <tbody>
             <tr>
               <Td label="Nom" value={data.etabliParControles} />
-              <Td label="Visa" value={data.visaControles} />
+              <td className="border border-black p-2">
+                <div className="text-xs font-bold">Signature</div>
+                {data.signatureControles ? (
+                  <img src={data.signatureControles} alt="Signature" style={{ height: "50px", objectFit: "contain" }} />
+                ) : (
+                  <div style={{ height: "50px", borderBottom: "1px solid #ccc" }} />
+                )}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -286,16 +333,32 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
         <table className="w-full border-collapse">
           <tbody>
             <tr>
-              <td className="border border-black p-3 text-center align-top" style={{ width: "50%", height: "200px" }}>
+              <td className="border border-black p-3 text-center align-top" style={{ width: "50%" }}>
                 <div className="text-xs font-bold mb-2" style={{ color: "#0032A0" }}>PHOTO AVANT</div>
-                <div className="border border-dashed border-gray-400 flex items-center justify-center" style={{ height: "160px" }}>
-                  <span className="text-gray-400 text-xs">Zone photo avant intervention</span>
+                <div className="space-y-2">
+                  {pAvant.length > 0 ? (
+                    pAvant.map((photo, i) => (
+                      <img key={i} src={photo} alt={`Avant ${i + 1}`} style={{ width: "100%", maxHeight: "180px", objectFit: "contain" }} />
+                    ))
+                  ) : (
+                    <div className="border border-dashed border-gray-400 flex items-center justify-center" style={{ height: "160px" }}>
+                      <span className="text-gray-400 text-xs">Zone photo avant intervention</span>
+                    </div>
+                  )}
                 </div>
               </td>
-              <td className="border border-black p-3 text-center align-top" style={{ height: "200px" }}>
+              <td className="border border-black p-3 text-center align-top">
                 <div className="text-xs font-bold mb-2" style={{ color: "#0032A0" }}>PHOTO APRES</div>
-                <div className="border border-dashed border-gray-400 flex items-center justify-center" style={{ height: "160px" }}>
-                  <span className="text-gray-400 text-xs">Zone photo apres intervention</span>
+                <div className="space-y-2">
+                  {pApres.length > 0 ? (
+                    pApres.map((photo, i) => (
+                      <img key={i} src={photo} alt={`Apres ${i + 1}`} style={{ width: "100%", maxHeight: "180px", objectFit: "contain" }} />
+                    ))
+                  ) : (
+                    <div className="border border-dashed border-gray-400 flex items-center justify-center" style={{ height: "160px" }}>
+                      <span className="text-gray-400 text-xs">Zone photo apres intervention</span>
+                    </div>
+                  )}
                 </div>
               </td>
             </tr>
@@ -328,6 +391,8 @@ function Td({ label, value }: { label: string; value?: string }) {
 }
 
 function generateText(data: TemplateData): string {
+  const toArr = (val: unknown): string[] =>
+    Array.isArray(val) ? val : typeof val === "string" && val ? [val] : [];
   const lines = [
     "RAPPORT DE NETTOYAGE ET VISITE DES RESERVOIRS",
     "EP 9001-1",
@@ -348,21 +413,21 @@ function generateText(data: TemplateData): string {
     `Motif - Autres: ${data.motifAutres || "-"}`,
     `Type - Chimique: ${data.typeChimique ? "Oui" : "Non"}`,
     `Type - Autres: ${data.typeAutres || "-"}`,
-    `Produits employes: ${data.produitsEmployes || "-"}`,
+    `Produits employes: ${toArr(data.produitsEmployes).join(", ") || "-"}`,
     `Quantite: ${data.quantite || "-"}`,
     "",
     "=== INTERVENANTS ===",
     `Equipe LDE: ${data.equipeLDE ? "Oui" : "Non"}`,
-    `Agents: ${data.nomsAgents || "-"}`,
+    `Agents: ${toArr(data.nomsAgents).join(", ") || "-"}`,
     `Sous-traitant: ${data.sousTraitant ? "Oui" : "Non"}`,
-    `Entreprise: ${data.nomEntreprise || "-"}`,
+    `Entreprises: ${toArr(data.nomsEntreprises).join(", ") || "-"}`,
     "",
     "=== OBSERVATIONS ===",
     `Encrassement: ${data.etatEncrassement}/5`,
     `Observations: ${data.observations || "-"}`,
     "",
     `Etabli par (Nettoyage): ${data.etabliParNettoyage || "-"}`,
-    `Visa: ${data.visaNettoyage || "-"}`,
+    `Signature: ${data.signatureNettoyage ? "[signee]" : "-"}`,
     "",
     "=== CONTROLES QUALITE ===",
     `Date analyse: ${data.dateAnalyse || "-"}`,
@@ -371,7 +436,7 @@ function generateText(data: TemplateData): string {
     `Bacteriologie: ${data.bacterioConforme ? "Conforme" : data.bacterioNonConforme ? "Non conforme" : "-"}`,
     "",
     `Etabli par (Controles): ${data.etabliParControles || "-"}`,
-    `Visa: ${data.visaControles || "-"}`,
+    `Signature: ${data.signatureControles ? "[signee]" : "-"}`,
     "",
     "=== VISITE DES EQUIPEMENTS ===",
   ];

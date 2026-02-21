@@ -71,7 +71,7 @@ export default function MissionRapportPage() {
     );
   }
 
-  const defaultData = templateData || templateDataSchema.parse({});
+  const defaultData = templateDataSchema.parse(templateData || {});
 
   return (
     <div className="p-6 space-y-6">

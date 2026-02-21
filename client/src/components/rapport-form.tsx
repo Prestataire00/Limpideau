@@ -1,6 +1,5 @@
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { templateDataSchema, visiteEquipements, type TemplateData } from "@shared/schema";
+import { visiteEquipements, type TemplateData } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { Save } from "lucide-react";
+import { Save, Plus, X, ImagePlus } from "lucide-react";
+import { useRef } from "react";
+import { SignaturePad } from "@/components/signature-pad";
 
 interface RapportFormProps {
   defaultValues: TemplateData;
@@ -18,11 +19,37 @@ interface RapportFormProps {
 
 export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormProps) {
   const { register, handleSubmit, watch, setValue } = useForm<TemplateData>({
-    resolver: zodResolver(templateDataSchema),
     defaultValues,
   });
 
   const etatEncrassement = watch("etatEncrassement");
+  const toArray = (val: unknown): string[] =>
+    Array.isArray(val) ? val : typeof val === "string" && val ? [val] : [];
+
+  const produitsEmployes = toArray(watch("produitsEmployes"));
+  const nomsAgents = toArray(watch("nomsAgents"));
+  const nomsEntreprises = toArray(watch("nomsEntreprises"));
+  const photosAvant = toArray(watch("photosAvant"));
+  const photosApres = toArray(watch("photosApres"));
+
+  const photoAvantRef = useRef<HTMLInputElement>(null);
+  const photoApresRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = (field: "photosAvant" | "photosApres", file: File) => {
+    const current = field === "photosAvant" ? photosAvant : photosApres;
+    if (current.length >= 2) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setValue(field, [...current, result]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = (field: "photosAvant" | "photosApres", index: number) => {
+    const current = field === "photosAvant" ? photosAvant : photosApres;
+    setValue(field, current.filter((_, i) => i !== index));
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -101,15 +128,48 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Produits employes - liste dynamique */}
+          <div className="space-y-2">
+            <Label>Produits employes</Label>
             <div className="space-y-2">
-              <Label htmlFor="produitsEmployes">Produits employes</Label>
-              <Input id="produitsEmployes" {...register("produitsEmployes")} placeholder="Noms des produits" />
+              {produitsEmployes.map((produit, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Input
+                    value={produit}
+                    onChange={(e) => {
+                      const updated = [...produitsEmployes];
+                      updated[index] = e.target.value;
+                      setValue("produitsEmployes", updated);
+                    }}
+                    placeholder={`Produit ${index + 1}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => setValue("produitsEmployes", produitsEmployes.filter((_, i) => i !== index))}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setValue("produitsEmployes", [...produitsEmployes, ""])}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Ajouter un produit
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="quantite">Quantite</Label>
-              <Input id="quantite" {...register("quantite")} placeholder="Quantite utilisee" />
-            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="quantite">Quantite</Label>
+            <Input id="quantite" {...register("quantite")} placeholder="Quantite utilisee" />
           </div>
         </CardContent>
       </Card>
@@ -120,7 +180,7 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
           <CardTitle>Intervenants</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -130,9 +190,40 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
                 />
                 <Label htmlFor="equipeLDE" className="font-normal">Equipe LDE</Label>
               </div>
+              {/* Noms des agents - liste dynamique */}
               <div className="space-y-2">
-                <Label htmlFor="nomsAgents">Noms des agents</Label>
-                <Input id="nomsAgents" {...register("nomsAgents")} placeholder="Noms des agents" />
+                <Label>Noms des agents</Label>
+                {nomsAgents.map((agent, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      value={agent}
+                      onChange={(e) => {
+                        const updated = [...nomsAgents];
+                        updated[index] = e.target.value;
+                        setValue("nomsAgents", updated);
+                      }}
+                      placeholder={`Agent ${index + 1}`}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={() => setValue("nomsAgents", nomsAgents.filter((_, i) => i !== index))}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setValue("nomsAgents", [...nomsAgents, ""])}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter un agent
+                </Button>
               </div>
             </div>
             <div className="space-y-3">
@@ -144,9 +235,40 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
                 />
                 <Label htmlFor="sousTraitant" className="font-normal">Sous-traitant</Label>
               </div>
+              {/* Noms des entreprises - liste dynamique */}
               <div className="space-y-2">
-                <Label htmlFor="nomEntreprise">Nom de l'entreprise</Label>
-                <Input id="nomEntreprise" {...register("nomEntreprise")} placeholder="Nom de l'entreprise" />
+                <Label>Noms des entreprises</Label>
+                {nomsEntreprises.map((entreprise, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      value={entreprise}
+                      onChange={(e) => {
+                        const updated = [...nomsEntreprises];
+                        updated[index] = e.target.value;
+                        setValue("nomsEntreprises", updated);
+                      }}
+                      placeholder={`Entreprise ${index + 1}`}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={() => setValue("nomsEntreprises", nomsEntreprises.filter((_, i) => i !== index))}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setValue("nomsEntreprises", [...nomsEntreprises, ""])}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter une entreprise
+                </Button>
               </div>
             </div>
           </div>
@@ -191,14 +313,18 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
         <CardHeader>
           <CardTitle>Etabli par (Nettoyage)</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
+        <CardContent className="space-y-4">
+          <div className="space-y-2 max-w-md">
             <Label htmlFor="etabliParNettoyage">Nom</Label>
             <Input id="etabliParNettoyage" {...register("etabliParNettoyage")} placeholder="Nom du responsable" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="visaNettoyage">Visa</Label>
-            <Input id="visaNettoyage" {...register("visaNettoyage")} placeholder="Visa" />
+            <Label>Signature</Label>
+            <SignaturePad
+              value={watch("signatureNettoyage") || ""}
+              onChange={(val) => setValue("signatureNettoyage", val)}
+              name={watch("etabliParNettoyage")}
+            />
           </div>
         </CardContent>
       </Card>
@@ -263,14 +389,18 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
         <CardHeader>
           <CardTitle>Etabli par (Controles)</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
+        <CardContent className="space-y-4">
+          <div className="space-y-2 max-w-md">
             <Label htmlFor="etabliParControles">Nom</Label>
             <Input id="etabliParControles" {...register("etabliParControles")} placeholder="Nom du responsable" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="visaControles">Visa</Label>
-            <Input id="visaControles" {...register("visaControles")} placeholder="Visa" />
+            <Label>Signature</Label>
+            <SignaturePad
+              value={watch("signatureControles") || ""}
+              onChange={(val) => setValue("signatureControles", val)}
+              name={watch("etabliParControles")}
+            />
           </div>
         </CardContent>
       </Card>
@@ -316,6 +446,106 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
                 ))}
               </tbody>
             </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Photos */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Photos</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Photos avant */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Photos avant intervention (2 max)</Label>
+            <div className="grid grid-cols-2 gap-4">
+              {photosAvant.map((photo, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={photo}
+                    alt={`Photo avant ${index + 1}`}
+                    className="w-full h-40 object-cover rounded-lg border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removePhoto("photosAvant", index)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              {photosAvant.length < 2 && (
+                <button
+                  type="button"
+                  className="h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                  onClick={() => photoAvantRef.current?.click()}
+                >
+                  <ImagePlus className="h-8 w-8" />
+                  <span className="text-xs">Ajouter photo</span>
+                </button>
+              )}
+            </div>
+            <input
+              ref={photoAvantRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handlePhotoUpload("photosAvant", file);
+                e.target.value = "";
+              }}
+            />
+          </div>
+
+          {/* Photos après */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Photos apres intervention (2 max)</Label>
+            <div className="grid grid-cols-2 gap-4">
+              {photosApres.map((photo, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={photo}
+                    alt={`Photo apres ${index + 1}`}
+                    className="w-full h-40 object-cover rounded-lg border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removePhoto("photosApres", index)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              {photosApres.length < 2 && (
+                <button
+                  type="button"
+                  className="h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                  onClick={() => photoApresRef.current?.click()}
+                >
+                  <ImagePlus className="h-8 w-8" />
+                  <span className="text-xs">Ajouter photo</span>
+                </button>
+              )}
+            </div>
+            <input
+              ref={photoApresRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handlePhotoUpload("photosApres", file);
+                e.target.value = "";
+              }}
+            />
           </div>
         </CardContent>
       </Card>

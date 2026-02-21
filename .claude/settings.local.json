@@ -11,7 +11,8 @@
       "Bash(tail:*)",
       "Bash(node:*)",
       "Bash(head:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx drizzle-kit:*)"
     ]
   }
 }

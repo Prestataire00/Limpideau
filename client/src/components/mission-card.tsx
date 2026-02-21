@@ -1,4 +1,4 @@
-import { Calendar, MapPin, User, MoreHorizontal, Eye, Edit, FileText, Trash2 } from "lucide-react";
+import { Calendar, MapPin, User, MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -62,12 +62,6 @@ export function MissionCard({ mission, onDelete }: MissionCardProps) {
                 <Link href={`/missions/${mission.id}/edit`} className="flex items-center gap-2" data-testid={`link-edit-${mission.id}`}>
                   <Edit className="h-4 w-4" />
                   Modifier
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/missions/${mission.id}/template`} className="flex items-center gap-2" data-testid={`link-template-${mission.id}`}>
-                  <FileText className="h-4 w-4" />
-                  Voir le template
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

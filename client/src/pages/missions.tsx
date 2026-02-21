@@ -24,11 +24,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Mission } from "@shared/schema";
 
 export default function MissionsPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -75,12 +78,14 @@ export default function MissionsPage() {
             Gérez toutes vos missions
           </p>
         </div>
-        <Link href="/missions/new">
-          <Button data-testid="button-new-mission">
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle mission
-          </Button>
-        </Link>
+        {isAdmin && (
+          <Link href="/missions/new">
+            <Button data-testid="button-new-mission">
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle mission
+            </Button>
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -130,6 +135,7 @@ export default function MissionsPage() {
               key={mission.id}
               mission={mission}
               onDelete={setDeleteId}
+              isAdmin={isAdmin}
             />
           ))}
         </div>
@@ -148,7 +154,7 @@ export default function MissionsPage() {
               ? "Essayez de modifier vos critères de recherche"
               : "Créez votre première mission pour commencer"}
           </p>
-          {!search && statusFilter === "all" && (
+          {!search && statusFilter === "all" && isAdmin && (
             <Link href="/missions/new">
               <Button data-testid="button-create-first-mission">
                 <Plus className="h-4 w-4 mr-2" />

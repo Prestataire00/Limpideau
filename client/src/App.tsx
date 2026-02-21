@@ -21,6 +21,7 @@ import ExtractionsPage from "@/pages/extractions";
 import SettingsPage from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import EmployeesPage from "@/pages/employees";
+import CalendrierPage from "@/pages/calendrier";
 
 function SalarieHome() {
   return <Redirect to="/missions" />;
@@ -36,10 +37,15 @@ function Router() {
         {isAdmin ? <Dashboard /> : <SalarieHome />}
       </Route>
       <Route path="/missions" component={MissionsPage} />
-      <Route path="/missions/new" component={MissionNewPage} />
+      <Route path="/missions/new">
+        <AdminRoute><MissionNewPage /></AdminRoute>
+      </Route>
       <Route path="/missions/:id" component={MissionDetailPage} />
-      <Route path="/missions/:id/edit" component={MissionEditPage} />
+      <Route path="/missions/:id/edit">
+        <AdminRoute><MissionEditPage /></AdminRoute>
+      </Route>
       <Route path="/missions/:id/rapport" component={MissionRapportPage} />
+      <Route path="/calendrier" component={CalendrierPage} />
       <Route path="/extractions">
         <AdminRoute><ExtractionsPage /></AdminRoute>
       </Route>

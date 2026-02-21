@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMissionSchema, insertDocumentSchema, templateDataSchema } from "@shared/schema";
+import { insertMissionSchema, insertDocumentSchema, templateDataSchema, insertInterventionDaySchema } from "@shared/schema";
 import { requireAuth, requireAdmin, hashPassword } from "./auth";
 import { sendReportEmail } from "./email";
 
@@ -35,7 +35,7 @@ export async function registerRoutes(
   });
 
   // Create mission
-  app.post("/api/missions", requireAuth, async (req, res) => {
+  app.post("/api/missions", requireAdmin, async (req, res) => {
     try {
       const parsed = insertMissionSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -50,7 +50,7 @@ export async function registerRoutes(
   });
 
   // Update mission
-  app.patch("/api/missions/:id", requireAuth, async (req, res) => {
+  app.patch("/api/missions/:id", requireAdmin, async (req, res) => {
     try {
       const parsed = insertMissionSchema.partial().safeParse(req.body);
       if (!parsed.success) {
@@ -127,7 +127,7 @@ export async function registerRoutes(
   });
 
   // Delete mission
-  app.delete("/api/missions/:id", requireAuth, async (req, res) => {
+  app.delete("/api/missions/:id", requireAdmin, async (req, res) => {
     try {
       const deleted = await storage.deleteMission(req.params.id);
       if (!deleted) {
@@ -367,6 +367,67 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // ===== Intervention days routes =====
+
+  // Get intervention days by date range (for calendar view)
+  app.get("/api/intervention-days", requireAuth, async (req, res) => {
+    try {
+      const start = req.query.start as string;
+      const end = req.query.end as string;
+      if (!start || !end) {
+        return res.status(400).json({ error: "Missing start or end parameter" });
+      }
+      const days = await storage.getInterventionDaysByDateRange(start, end);
+      res.json(days);
+    } catch (error) {
+      console.error("Error fetching intervention days:", error);
+      res.status(500).json({ error: "Failed to fetch intervention days" });
+    }
+  });
+
+  // Get intervention days for a mission
+  app.get("/api/missions/:id/intervention-days", requireAuth, async (req, res) => {
+    try {
+      const days = await storage.getInterventionDaysByMission(req.params.id);
+      res.json(days);
+    } catch (error) {
+      console.error("Error fetching intervention days:", error);
+      res.status(500).json({ error: "Failed to fetch intervention days" });
+    }
+  });
+
+  // Create intervention day (admin only)
+  app.post("/api/missions/:id/intervention-days", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertInterventionDaySchema.safeParse({
+        ...req.body,
+        missionId: req.params.id,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid data", details: parsed.error });
+      }
+      const day = await storage.createInterventionDay(parsed.data);
+      res.status(201).json(day);
+    } catch (error) {
+      console.error("Error creating intervention day:", error);
+      res.status(500).json({ error: "Failed to create intervention day" });
+    }
+  });
+
+  // Delete intervention day (admin only)
+  app.delete("/api/intervention-days/:id", requireAdmin, async (req, res) => {
+    try {
+      const deleted = await storage.deleteInterventionDay(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Intervention day not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting intervention day:", error);
+      res.status(500).json({ error: "Failed to delete intervention day" });
     }
   });
 

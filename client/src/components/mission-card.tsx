@@ -19,6 +19,7 @@ import type { Mission, MissionStatus } from "@shared/schema";
 interface MissionCardProps {
   mission: Mission;
   onDelete?: (id: string) => void;
+  isAdmin?: boolean;
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
@@ -86,7 +87,7 @@ export function StatusDropdown({ mission }: { mission: Mission }) {
   );
 }
 
-export function MissionCard({ mission, onDelete }: MissionCardProps) {
+export function MissionCard({ mission, onDelete, isAdmin }: MissionCardProps) {
   const statusBorderColor = mission.status === "pending" ? "border-l-amber-400" : mission.status === "in_progress" ? "border-l-blue-500" : mission.status === "completed" ? "border-l-emerald-500" : "border-l-red-400";
 
   return (
@@ -102,7 +103,7 @@ export function MissionCard({ mission, onDelete }: MissionCardProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <StatusDropdown mission={mission} />
+          {isAdmin ? <StatusDropdown mission={mission} /> : <StatusBadge status={mission.status} />}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" data-testid={`button-menu-${mission.id}`}>
@@ -116,21 +117,25 @@ export function MissionCard({ mission, onDelete }: MissionCardProps) {
                   Voir les details
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/missions/${mission.id}/edit`} className="flex items-center gap-2" data-testid={`link-edit-${mission.id}`}>
-                  <Edit className="h-4 w-4" />
-                  Modifier
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => onDelete?.(mission.id)}
-                data-testid={`button-delete-${mission.id}`}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
+              {isAdmin && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/missions/${mission.id}/edit`} className="flex items-center gap-2" data-testid={`link-edit-${mission.id}`}>
+                      <Edit className="h-4 w-4" />
+                      Modifier
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => onDelete?.(mission.id)}
+                    data-testid={`button-delete-${mission.id}`}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

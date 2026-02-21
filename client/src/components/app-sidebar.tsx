@@ -1,4 +1,4 @@
-import { Droplets, LayoutDashboard, FileText, Settings, Plus, Calendar, Briefcase, Users, LogOut } from "lucide-react";
+import { Droplets, LayoutDashboard, FileText, Settings, Plus, Calendar, CalendarDays, Briefcase, Users, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -27,6 +27,11 @@ const adminMenuItems = [
     icon: Briefcase,
   },
   {
+    title: "Calendrier",
+    url: "/calendrier",
+    icon: CalendarDays,
+  },
+  {
     title: "Extractions",
     url: "/extractions",
     icon: Calendar,
@@ -43,6 +48,11 @@ const salarieMenuItems = [
     title: "Missions",
     url: "/missions",
     icon: Briefcase,
+  },
+  {
+    title: "Calendrier",
+    url: "/calendrier",
+    icon: CalendarDays,
   },
 ];
 
@@ -101,17 +111,19 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel>Actions rapides</SidebarGroupLabel>
-          <SidebarGroupContent className="px-2">
-            <Link href="/missions/new">
-              <Button className="w-full justify-start gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white shadow-sm" data-testid="button-new-mission-sidebar">
-                <Plus className="h-4 w-4" />
-                Nouvelle mission
-              </Button>
-            </Link>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel>Actions rapides</SidebarGroupLabel>
+            <SidebarGroupContent className="px-2">
+              <Link href="/missions/new">
+                <Button className="w-full justify-start gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white shadow-sm" data-testid="button-new-mission-sidebar">
+                  <Plus className="h-4 w-4" />
+                  Nouvelle mission
+                </Button>
+              </Link>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="p-4 space-y-2">
         {user && (

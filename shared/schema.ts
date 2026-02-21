@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -185,3 +185,19 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
 
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
+
+export const interventionDays = pgTable("intervention_days", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  missionId: varchar("mission_id").notNull().references(() => missions.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertInterventionDaySchema = createInsertSchema(interventionDays).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InterventionDay = typeof interventionDays.$inferSelect;
+export type InsertInterventionDay = z.infer<typeof insertInterventionDaySchema>;

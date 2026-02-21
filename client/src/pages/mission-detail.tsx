@@ -1,22 +1,64 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, Edit, ClipboardList, Calendar, MapPin, User, Mail, Phone, Euro } from "lucide-react";
+import { ArrowLeft, Edit, ClipboardList, Calendar as CalendarIcon, MapPin, User, Mail, Phone, Euro, Plus, Trash2, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { StatusDropdown } from "@/components/mission-card";
-import type { Mission } from "@shared/schema";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { StatusDropdown, StatusBadge } from "@/components/mission-card";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Mission, InterventionDay } from "@shared/schema";
 
 export default function MissionDetailPage() {
   const [, params] = useRoute("/missions/:id");
   const missionId = params?.id;
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const isAdmin = user?.role === "admin";
 
   const { data: mission, isLoading } = useQuery<Mission>({
     queryKey: ["/api/missions", missionId],
     enabled: !!missionId,
+  });
+
+  const { data: interventionDaysList = [] } = useQuery<InterventionDay[]>({
+    queryKey: [`/api/missions/${missionId}/intervention-days`],
+    enabled: !!missionId,
+  });
+
+  const createDayMutation = useMutation({
+    mutationFn: async (data: { date: string; notes?: string }) => {
+      const res = await apiRequest("POST", `/api/missions/${missionId}/intervention-days`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/missions/${missionId}/intervention-days`] });
+      toast({ title: "Jour ajouté" });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible d'ajouter ce jour", variant: "destructive" });
+    },
+  });
+
+  const deleteDayMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/intervention-days/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/missions/${missionId}/intervention-days`] });
+      toast({ title: "Jour supprimé" });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de supprimer ce jour", variant: "destructive" });
+    },
   });
 
   if (isLoading) {
@@ -59,7 +101,7 @@ export default function MissionDetailPage() {
               <h1 className="text-3xl font-bold tracking-tight" data-testid="text-mission-title">
                 {mission.title}
               </h1>
-              <StatusDropdown mission={mission} />
+              {isAdmin ? <StatusDropdown mission={mission} /> : <StatusBadge status={mission.status} />}
             </div>
             <p className="text-muted-foreground mt-1">
               Référence: {mission.id.slice(0, 8).toUpperCase()}
@@ -73,12 +115,14 @@ export default function MissionDetailPage() {
               Rapport Reservoir
             </Button>
           </Link>
-          <Link href={`/missions/${mission.id}/edit`}>
-            <Button data-testid="button-edit">
-              <Edit className="h-4 w-4 mr-2" />
-              Modifier
-            </Button>
-          </Link>
+          {isAdmin && (
+            <Link href={`/missions/${mission.id}/edit`}>
+              <Button data-testid="button-edit">
+                <Edit className="h-4 w-4 mr-2" />
+                Modifier
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -121,6 +165,52 @@ export default function MissionDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5" />
+                Jours d'intervention
+              </CardTitle>
+              {isAdmin && (
+                <InterventionDayPicker
+                  onAdd={(date, notes) => createDayMutation.mutate({ date, notes })}
+                  isPending={createDayMutation.isPending}
+                />
+              )}
+            </CardHeader>
+            <CardContent>
+              {interventionDaysList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun jour d'intervention planifié.</p>
+              ) : (
+                <div className="space-y-2">
+                  {interventionDaysList.map((day) => (
+                    <div key={day.id} className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
+                      <div>
+                        <span className="font-medium">
+                          {format(new Date(day.date + "T00:00:00"), "EEEE d MMMM yyyy", { locale: fr })}
+                        </span>
+                        {day.notes && (
+                          <span className="text-muted-foreground ml-2">— {day.notes}</span>
+                        )}
+                      </div>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteDayMutation.mutate(day.id)}
+                          disabled={deleteDayMutation.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -130,14 +220,14 @@ export default function MissionDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <InfoItem
-                icon={Calendar}
+                icon={CalendarIcon}
                 label="Date de début"
                 value={format(new Date(mission.startDate), "d MMMM yyyy", { locale: fr })}
                 testId="text-start-date"
               />
               <Separator />
               <InfoItem
-                icon={Calendar}
+                icon={CalendarIcon}
                 label="Date de fin"
                 value={mission.endDate ? format(new Date(mission.endDate), "d MMMM yyyy", { locale: fr }) : "Non définie"}
                 testId="text-end-date"
@@ -173,14 +263,14 @@ export default function MissionDetailPage() {
   );
 }
 
-function InfoItem({ 
-  icon: Icon, 
-  label, 
+function InfoItem({
+  icon: Icon,
+  label,
   value,
-  testId 
-}: { 
-  icon: React.ComponentType<{ className?: string }>; 
-  label: string; 
+  testId
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
   value?: string | null;
   testId?: string;
 }) {
@@ -192,5 +282,58 @@ function InfoItem({
         <p className="font-medium" data-testid={testId}>{value || "-"}</p>
       </div>
     </div>
+  );
+}
+
+function InterventionDayPicker({
+  onAdd,
+  isPending,
+}: {
+  onAdd: (date: string, notes?: string) => void;
+  isPending: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [notes, setNotes] = useState("");
+
+  const handleConfirm = () => {
+    if (!selectedDate) return;
+    onAdd(format(selectedDate, "yyyy-MM-dd"), notes || undefined);
+    setSelectedDate(undefined);
+    setNotes("");
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Plus className="h-4 w-4 mr-1" />
+          Ajouter
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="end">
+        <div className="p-3 space-y-3">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+            locale={fr}
+          />
+          <Input
+            placeholder="Notes (optionnel)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+          <Button
+            className="w-full"
+            onClick={handleConfirm}
+            disabled={!selectedDate || isPending}
+          >
+            Confirmer
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

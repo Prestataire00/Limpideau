@@ -1,6 +1,6 @@
-import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents, type Signature, signatures, type User, type InsertUser, users } from "@shared/schema";
+import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents, type Signature, signatures, type User, type InsertUser, users, type InterventionDay, type InsertInterventionDay, interventionDays } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lt, isNotNull } from "drizzle-orm";
+import { eq, desc, asc, and, gte, lte, lt, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   getAllMissions(): Promise<Mission[]>;
@@ -25,6 +25,11 @@ export interface IStorage {
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
+
+  getInterventionDaysByMission(missionId: string): Promise<InterventionDay[]>;
+  getInterventionDaysByDateRange(start: string, end: string): Promise<InterventionDay[]>;
+  createInterventionDay(data: InsertInterventionDay): Promise<InterventionDay>;
+  deleteInterventionDay(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -154,6 +159,28 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async getInterventionDaysByMission(missionId: string): Promise<InterventionDay[]> {
+    return db.select().from(interventionDays)
+      .where(eq(interventionDays.missionId, missionId))
+      .orderBy(asc(interventionDays.date));
+  }
+
+  async getInterventionDaysByDateRange(start: string, end: string): Promise<InterventionDay[]> {
+    return db.select().from(interventionDays)
+      .where(and(gte(interventionDays.date, start), lte(interventionDays.date, end)))
+      .orderBy(asc(interventionDays.date));
+  }
+
+  async createInterventionDay(data: InsertInterventionDay): Promise<InterventionDay> {
+    const [created] = await db.insert(interventionDays).values(data).returning();
+    return created;
+  }
+
+  async deleteInterventionDay(id: string): Promise<boolean> {
+    const result = await db.delete(interventionDays).where(eq(interventionDays.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 }
 

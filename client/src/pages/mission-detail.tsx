@@ -11,11 +11,53 @@ import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { StatusDropdown, StatusBadge } from "@/components/mission-card";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Mission, InterventionDay, Report } from "@shared/schema";
+import { templateDataSchema, visiteEquipements } from "@shared/schema";
+import type { Mission, InterventionDay, Report, TemplateData } from "@shared/schema";
+
+function computeReportProgress(report: Report): number {
+  if (!report.templateData) return 0;
+  const td = templateDataSchema.parse(report.templateData);
+
+  const checks: boolean[] = [
+    // En-tête (4 champs clés)
+    !!td.commune,
+    !!td.nomReservoir,
+    !!td.numeroCuve,
+    !!td.volume,
+    // Date/Heure (3)
+    !!td.date,
+    !!td.heureDebut,
+    !!td.heureFin,
+    // Nettoyage (2)
+    td.motifEntretienAnnuel || !!td.motifAutres,
+    td.typeChimique || !!td.typeAutres,
+    // Intervenants (2)
+    td.equipeLDE || td.sousTraitant,
+    (td.nomsAgents?.length ?? 0) > 0 || (td.nomsEntreprises?.length ?? 0) > 0,
+    // Observations (1)
+    !!td.observations || td.etatEncrassement > 1,
+    // Signature nettoyage (2)
+    !!td.etabliParNettoyage,
+    !!td.signatureNettoyage,
+    // Contrôles qualité (3)
+    !!td.dateAnalyse,
+    !!td.chloreResiduel,
+    td.bacterioConforme || td.bacterioNonConforme,
+    // Signature contrôles (2)
+    !!td.etabliParControles,
+    !!td.signatureControles,
+    // Visite (1 - au moins 1 équipement coché)
+    Object.keys(td.visite || {}).some((k) => td.visite?.[k]?.bon),
+  ];
+
+  const filled = checks.filter(Boolean).length;
+  return Math.round((filled / checks.length) * 100);
+}
 
 export default function MissionDetailPage() {
   const [, params] = useRoute("/missions/:id");
@@ -76,8 +118,9 @@ export default function MissionDetailPage() {
       queryClient.invalidateQueries({ queryKey: [`/api/missions/${missionId}/reports`] });
       toast({ title: "Rapport créé" });
     },
-    onError: () => {
-      toast({ title: "Erreur", description: "Impossible de créer le rapport", variant: "destructive" });
+    onError: (error: Error) => {
+      console.error("Create report error:", error);
+      toast({ title: "Erreur", description: error.message || "Impossible de créer le rapport", variant: "destructive" });
     },
   });
 
@@ -89,8 +132,9 @@ export default function MissionDetailPage() {
       queryClient.invalidateQueries({ queryKey: [`/api/missions/${missionId}/reports`] });
       toast({ title: "Rapport supprimé" });
     },
-    onError: () => {
-      toast({ title: "Erreur", description: "Impossible de supprimer le rapport", variant: "destructive" });
+    onError: (error: Error) => {
+      console.error("Delete report error:", error);
+      toast({ title: "Erreur", description: error.message || "Impossible de supprimer le rapport", variant: "destructive" });
     },
   });
 
@@ -216,12 +260,22 @@ export default function MissionDetailPage() {
                 <p className="text-sm text-muted-foreground">Aucun rapport. {isAdmin ? "Cliquez sur Ajouter pour créer un rapport." : ""}</p>
               ) : (
                 <div className="space-y-2">
-                  {reportsList.map((report) => (
-                    <div key={report.id} className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
-                      <Link href={`/missions/${missionId}/rapports/${report.id}`}>
-                        <span className="font-medium text-primary hover:underline cursor-pointer">
-                          {report.title}
-                        </span>
+                  {reportsList.map((report) => {
+                    const progress = computeReportProgress(report);
+                    return (
+                    <div key={report.id} className="flex items-center gap-3 p-2 rounded-md border text-sm">
+                      <Link href={`/missions/${missionId}/rapports/${report.id}`} className="flex-1 min-w-0">
+                        <div className="cursor-pointer">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-primary hover:underline">
+                              {report.title}
+                            </span>
+                            <span className={`text-xs font-medium ${progress === 100 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                              {progress}%
+                            </span>
+                          </div>
+                          <Progress value={progress} className="h-1.5" />
+                        </div>
                       </Link>
                       {isAdmin && (
                         <Button
@@ -235,7 +289,8 @@ export default function MissionDetailPage() {
                         </Button>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

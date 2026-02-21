@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { Printer, Mail, Copy, Check } from "lucide-react";
+import { useState, useRef } from "react";
+import { Printer, Copy, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { visiteEquipements, type TemplateData } from "@shared/schema";
 import type { Mission } from "@shared/schema";
 import suezLogo from "@assets/image_1771672165186.png";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface RapportTemplateProps {
   mission: Mission;
@@ -14,6 +16,58 @@ interface RapportTemplateProps {
 export function RapportTemplate({ mission, data }: RapportTemplateProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const rapportRef = useRef<HTMLDivElement>(null);
+
+  const generatePdf = async (): Promise<Blob | null> => {
+    const el = rapportRef.current;
+    if (!el) return null;
+
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+    });
+
+    const imgWidth = 210; // A4 width in mm
+    const pageHeight = 297; // A4 height in mm
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position -= pageHeight;
+      pdf.addPage();
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    return pdf.output("blob");
+  };
+
+  const handleDownloadPdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      const blob = await generatePdf();
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Rapport_${data.nomReservoir || "Reservoir"}_${data.date || "sans-date"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "PDF genere", description: "Le rapport a ete telecharge." });
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de generer le PDF.", variant: "destructive" });
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -26,11 +80,6 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleEmail = () => {
-    const subject = encodeURIComponent(`Rapport Reservoir - ${data.nomReservoir || mission.title}`);
-    const body = encodeURIComponent(generateText(data));
-    window.open(`mailto:${mission.clientEmail || ""}?subject=${subject}&body=${body}`);
-  };
 
   const cb = (checked: boolean) => checked ? "☑" : "☐";
   const toArray = (val: unknown): string[] =>
@@ -50,11 +99,11 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
           {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
           {copied ? "Copie" : "Copier"}
         </Button>
-        <Button variant="outline" size="sm" onClick={handleEmail}>
-          <Mail className="h-4 w-4 mr-2" />
-          Envoyer par mail
+        <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={generatingPdf}>
+          <Download className="h-4 w-4 mr-2" />
+          {generatingPdf ? "Generation..." : "PDF"}
         </Button>
-        <Button variant="outline" size="sm" onClick={handlePrint}>
+<Button variant="outline" size="sm" onClick={handlePrint}>
           <Printer className="h-4 w-4 mr-2" />
           Imprimer
         </Button>
@@ -65,31 +114,51 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
         @media print {
           body * { visibility: hidden; }
           .rapport-excel, .rapport-excel * { visibility: visible; }
+          @page {
+            size: A4;
+            margin: 6mm;
+          }
           .rapport-excel {
             position: absolute;
             left: 0;
             top: 0;
-            width: 210mm;
+            width: 100%;
+            box-sizing: border-box;
             margin: 0;
-            padding: 10mm;
-            font-size: 9pt;
+            padding: 0;
+            font-size: 8pt;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
           .rapport-excel * {
+            box-sizing: border-box;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          .rapport-excel table { page-break-inside: auto; }
+          .rapport-excel table { width: 100% !important; }
           .rapport-excel tr { page-break-inside: avoid; }
-          .rapport-page-break { page-break-before: always; }
+          .rapport-page1 {
+            border: 2px solid black !important;
+            page-break-after: always;
+            margin-bottom: 0 !important;
+          }
+          .rapport-page2 {
+            border: 2px solid black !important;
+            margin-top: 0 !important;
+          }
+          .rapport-page1, .rapport-page2 {
+            overflow: hidden;
+          }
         }
       `}</style>
 
       {/* Rapport content - Excel faithful reproduction */}
-      <div className="rapport-excel max-w-4xl mx-auto bg-white text-black border border-black" style={{ fontFamily: "Arial, sans-serif" }}>
+      <div ref={rapportRef} className="rapport-excel max-w-4xl mx-auto bg-white text-black" style={{ fontFamily: "Arial, sans-serif" }}>
+
+        {/* === PAGE 1: Header through Etabli Par (Controles) === */}
+        <div className="rapport-page1 border-2 border-black">
 
         {/* === HEADER: Logo + Title === */}
         <table className="w-full border-collapse" style={{ borderBottom: "2px solid black" }}>
@@ -297,8 +366,12 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
           </tbody>
         </table>
 
+        </div>{/* End rapport-page1 */}
+
+        {/* === PAGE 2: Visite + Photos === */}
+        <div className="rapport-page2 border-2 border-black mt-4 print:mt-0">
+
         {/* === VISITE === */}
-        <div className="rapport-page-break" />
         <SectionHeader title="VISITE" />
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -362,6 +435,8 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
             </tr>
           </tbody>
         </table>
+
+        </div>{/* End rapport-page2 */}
 
       </div>
     </div>

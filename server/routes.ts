@@ -239,5 +239,20 @@ export async function registerRoutes(
     }
   });
 
+  // Get completed missions with reports for a given date
+  app.get("/api/extractions/daily", async (req, res) => {
+    try {
+      const date = req.query.date as string;
+      if (!date) {
+        return res.status(400).json({ error: "Missing date parameter" });
+      }
+      const results = await storage.getCompletedMissionsByDate(date);
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching daily extraction:", error);
+      res.status(500).json({ error: "Failed to fetch daily extraction" });
+    }
+  });
+
   return httpServer;
 }

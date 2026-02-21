@@ -1,4 +1,4 @@
-import { Briefcase, LayoutDashboard, FileText, Settings, Plus } from "lucide-react";
+import { Briefcase, LayoutDashboard, FileText, Settings, Plus, Calendar } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -24,6 +24,11 @@ const menuItems = [
     title: "Missions",
     url: "/missions",
     icon: Briefcase,
+  },
+  {
+    title: "Extractions",
+    url: "/extractions",
+    icon: Calendar,
   },
   {
     title: "Templates",

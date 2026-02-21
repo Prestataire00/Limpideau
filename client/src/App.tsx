@@ -15,6 +15,7 @@ import MissionDetailPage from "@/pages/mission-detail";
 import MissionEditPage from "@/pages/mission-edit";
 import MissionRapportPage from "@/pages/mission-rapport";
 import TemplatesPage from "@/pages/templates";
+import ExtractionsPage from "@/pages/extractions";
 import SettingsPage from "@/pages/settings";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/missions/:id" component={MissionDetailPage} />
       <Route path="/missions/:id/edit" component={MissionEditPage} />
       <Route path="/missions/:id/rapport" component={MissionRapportPage} />
+      <Route path="/extractions" component={ExtractionsPage} />
       <Route path="/templates" component={TemplatesPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />

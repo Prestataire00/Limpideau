@@ -12,7 +12,8 @@
       "Bash(node:*)",
       "Bash(head:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx drizzle-kit:*)"
+      "Bash(npx drizzle-kit:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

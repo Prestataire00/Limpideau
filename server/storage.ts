@@ -1,6 +1,6 @@
 import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents, type Signature, signatures } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte, lt, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   getAllMissions(): Promise<Mission[]>;
@@ -17,6 +17,7 @@ export interface IStorage {
 
   getSignatureByName(name: string): Promise<Signature | undefined>;
   upsertSignature(name: string, data: string): Promise<Signature>;
+  getCompletedMissionsByDate(date: string): Promise<Mission[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -80,6 +81,24 @@ export class DatabaseStorage implements IStorage {
     const normalized = name.trim().toLowerCase();
     const [sig] = await db.select().from(signatures).where(eq(signatures.name, normalized));
     return sig;
+  }
+
+  async getCompletedMissionsByDate(date: string): Promise<Mission[]> {
+    const dayStart = new Date(date);
+    const dayEnd = new Date(date);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    return db
+      .select()
+      .from(missions)
+      .where(
+        and(
+          eq(missions.status, "completed"),
+          isNotNull(missions.templateData),
+          gte(missions.startDate, dayStart),
+          lt(missions.startDate, dayEnd)
+        )
+      )
+      .orderBy(desc(missions.createdAt));
   }
 
   async upsertSignature(name: string, data: string): Promise<Signature> {

@@ -1,5 +1,7 @@
 import { db } from "./db";
-import { missions } from "@shared/schema";
+import { missions, users } from "@shared/schema";
+import { hashPassword } from "./auth";
+import { storage } from "./storage";
 
 const seedMissions = [
   {
@@ -71,9 +73,22 @@ const seedMissions = [
 
 export async function seed() {
   try {
+    // Seed admin user if no users exist
+    const existingUsers = await db.select().from(users).limit(1);
+    if (existingUsers.length === 0) {
+      console.log("Seeding default admin user...");
+      await storage.createUser({
+        username: "admin",
+        password: hashPassword("admin123"),
+        role: "admin",
+        fullName: "Administrateur",
+      });
+      console.log("Admin user created (admin / admin123)");
+    }
+
     const existingMissions = await db.select().from(missions).limit(1);
     if (existingMissions.length > 0) {
-      console.log("Database already seeded, skipping...");
+      console.log("Database already seeded, skipping missions...");
       return;
     }
 

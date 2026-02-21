@@ -53,24 +53,32 @@ export default function Dashboard() {
             value={stats.total}
             icon={Briefcase}
             testId="stats-total"
+            accent="text-blue-600 dark:text-blue-400"
+            iconBg="bg-blue-100 dark:bg-blue-950/50"
           />
           <StatsCard
             title="En attente"
             value={stats.pending}
             icon={Clock}
             testId="stats-pending"
+            accent="text-amber-600 dark:text-amber-400"
+            iconBg="bg-amber-100 dark:bg-amber-950/50"
           />
           <StatsCard
             title="En cours"
             value={stats.inProgress}
             icon={TrendingUp}
             testId="stats-in-progress"
+            accent="text-indigo-600 dark:text-indigo-400"
+            iconBg="bg-indigo-100 dark:bg-indigo-950/50"
           />
           <StatsCard
-            title="Terminées"
+            title="Terminees"
             value={stats.completed}
             icon={CheckCircle2}
             testId="stats-completed"
+            accent="text-emerald-600 dark:text-emerald-400"
+            iconBg="bg-emerald-100 dark:bg-emerald-950/50"
           />
         </div>
       )}

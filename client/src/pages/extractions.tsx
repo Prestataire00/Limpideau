@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/mission-card";
 import { useToast } from "@/hooks/use-toast";
 import { templateDataSchema, visiteEquipements, type TemplateData } from "@shared/schema";
 import type { Mission } from "@shared/schema";
@@ -35,7 +35,22 @@ export default function ExtractionsPage() {
     (m) => m.templateData
   );
 
-  const autoExportDone = useRef(false);
+  const isDateExported = (date: string) => {
+    const exported: string[] = JSON.parse(localStorage.getItem("limpideau-exported-dates") || "[]");
+    return exported.includes(date);
+  };
+
+  const markDateExported = (date: string) => {
+    const exported: string[] = JSON.parse(localStorage.getItem("limpideau-exported-dates") || "[]");
+    if (!exported.includes(date)) {
+      exported.push(date);
+      // Garder uniquement les 90 derniers jours
+      if (exported.length > 90) exported.splice(0, exported.length - 90);
+      localStorage.setItem("limpideau-exported-dates", JSON.stringify(exported));
+    }
+  };
+
+  const alreadyExported = isDateExported(selectedDate);
 
   const handleExportAll = useCallback(async () => {
     if (!completedMissions.length) return;
@@ -108,6 +123,7 @@ export default function ExtractionsPage() {
       a.click();
       URL.revokeObjectURL(url);
 
+      markDateExported(selectedDate);
       toast({
         title: "Extraction terminee",
         description: `${completedMissions.length} rapport(s) exporte(s) en PDF.`,
@@ -123,7 +139,8 @@ export default function ExtractionsPage() {
     }
   }, [completedMissions, selectedDate, toast]);
 
-  // Auto-export when data loads for today's date
+  // Auto-export une seule fois par jour (uniquement pour aujourd'hui)
+  const autoExportTriggered = useRef(false);
   useEffect(() => {
     const today = format(new Date(), "yyyy-MM-dd");
     if (
@@ -131,17 +148,13 @@ export default function ExtractionsPage() {
       completedMissions.length > 0 &&
       !isLoading &&
       !generating &&
-      !autoExportDone.current
+      !autoExportTriggered.current &&
+      !isDateExported(today)
     ) {
-      autoExportDone.current = true;
+      autoExportTriggered.current = true;
       handleExportAll();
     }
   }, [selectedDate, completedMissions, isLoading, generating, handleExportAll]);
-
-  // Reset auto-export flag when date changes
-  useEffect(() => {
-    autoExportDone.current = false;
-  }, [selectedDate]);
 
   const handleExportSingle = async (mission: Mission) => {
     setGenerating(true);
@@ -245,8 +258,16 @@ export default function ExtractionsPage() {
               )}
               {generating
                 ? "Generation en cours..."
-                : `Exporter tout (${completedMissions.length})`}
+                : alreadyExported
+                  ? `Re-exporter (${completedMissions.length})`
+                  : `Exporter tout (${completedMissions.length})`}
             </Button>
+            {alreadyExported && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Deja exporte
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -294,9 +315,7 @@ export default function ExtractionsPage() {
                         {td.nomReservoir && (
                           <span>Reservoir : {td.nomReservoir}</span>
                         )}
-                        <Badge variant="outline" className="text-xs">
-                          Terminee
-                        </Badge>
+                        <StatusBadge status="completed" />
                       </div>
                     </div>
                   </div>

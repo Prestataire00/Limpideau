@@ -1,4 +1,4 @@
-import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents, type Signature, signatures } from "@shared/schema";
+import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents, type Signature, signatures, type User, type InsertUser, users } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lt, isNotNull } from "drizzle-orm";
 
@@ -18,6 +18,13 @@ export interface IStorage {
   getSignatureByName(name: string): Promise<Signature | undefined>;
   upsertSignature(name: string, data: string): Promise<Signature>;
   getCompletedMissionsByDate(date: string): Promise<Mission[]>;
+
+  getUser(id: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
+  getAllUsers(): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -114,6 +121,39 @@ export class DatabaseStorage implements IStorage {
     }
     const [created] = await db.insert(signatures).values({ name: normalized, data }).returning();
     return created;
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [created] = await db.insert(users).values(user).returning();
+    return created;
+  }
+
+  async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(desc(users.createdAt));
   }
 }
 

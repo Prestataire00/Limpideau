@@ -7,19 +7,23 @@ interface StatsCardProps {
   description?: string;
   icon: LucideIcon;
   testId?: string;
+  accent?: string;
+  iconBg?: string;
 }
 
-export function StatsCard({ title, value, description, icon: Icon, testId }: StatsCardProps) {
+export function StatsCard({ title, value, description, icon: Icon, testId, accent, iconBg }: StatsCardProps) {
   return (
-    <Card data-testid={testId}>
+    <Card data-testid={testId} className="overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconBg || "bg-primary/10"}`}>
+          <Icon className={`h-4 w-4 ${accent || "text-primary"}`} />
+        </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold" data-testid={`${testId}-value`}>
+        <div className={`text-2xl font-bold ${accent || ""}`} data-testid={`${testId}-value`}>
           {value}
         </div>
         {description && (

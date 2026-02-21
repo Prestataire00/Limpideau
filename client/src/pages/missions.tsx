@@ -101,10 +101,18 @@ export default function MissionsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les statuts</SelectItem>
-            <SelectItem value="pending">En attente</SelectItem>
-            <SelectItem value="in_progress">En cours</SelectItem>
-            <SelectItem value="completed">Terminées</SelectItem>
-            <SelectItem value="cancelled">Annulées</SelectItem>
+            <SelectItem value="pending">
+              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-amber-500" /> En attente</span>
+            </SelectItem>
+            <SelectItem value="in_progress">
+              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-blue-500" /> En cours</span>
+            </SelectItem>
+            <SelectItem value="completed">
+              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Terminees</span>
+            </SelectItem>
+            <SelectItem value="cancelled">
+              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-red-500" /> Annulees</span>
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>

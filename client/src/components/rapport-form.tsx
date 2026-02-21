@@ -408,7 +408,29 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
       {/* Visite des equipements */}
       <Card>
         <CardHeader>
-          <CardTitle>Visite des equipements</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Visite des equipements</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const visite = watch("visite") || {};
+                const allBon = visiteEquipements.every((e) => visite[e]?.bon);
+                const updated = { ...visite };
+                for (const equip of visiteEquipements) {
+                  updated[equip] = { ...updated[equip], bon: !allBon };
+                }
+                setValue("visite", updated);
+              }}
+            >
+              {(() => {
+                const visite = watch("visite") || {};
+                const allBon = visiteEquipements.every((e) => visite[e]?.bon);
+                return allBon ? "Tout deselectionner" : "Tout selectionner en bon";
+              })()}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -421,29 +443,41 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
                 </tr>
               </thead>
               <tbody>
-                {visiteEquipements.map((equip) => (
-                  <tr key={equip} className="border-b last:border-0">
-                    <td className="py-2 px-3 text-sm">{equip}</td>
-                    <td className="py-2 px-3 text-center">
-                      <Checkbox
-                        checked={watch(`visite.${equip}.bon`) ?? false}
-                        onCheckedChange={(checked) =>
-                          setValue(`visite.${equip}.bon`, !!checked)
-                        }
-                      />
-                    </td>
-                    <td className="py-2 px-3">
-                      <Input
-                        className="h-8 text-sm"
-                        value={watch(`visite.${equip}.observations`) ?? ""}
-                        onChange={(e) =>
-                          setValue(`visite.${equip}.observations`, e.target.value)
-                        }
-                        placeholder="..."
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {visiteEquipements.map((equip) => {
+                  const visite = watch("visite") || {};
+                  const item = visite[equip] || { bon: false, observations: "" };
+                  return (
+                    <tr key={equip} className="border-b last:border-0">
+                      <td className="py-2 px-3 text-sm">{equip}</td>
+                      <td className="py-2 px-3 text-center">
+                        <Checkbox
+                          checked={item.bon ?? false}
+                          onCheckedChange={(checked) => {
+                            const v = watch("visite") || {};
+                            setValue("visite", {
+                              ...v,
+                              [equip]: { ...v[equip], bon: !!checked },
+                            });
+                          }}
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <Input
+                          className="h-8 text-sm"
+                          value={item.observations ?? ""}
+                          onChange={(e) => {
+                            const v = watch("visite") || {};
+                            setValue("visite", {
+                              ...v,
+                              [equip]: { ...v[equip], observations: e.target.value },
+                            });
+                          }}
+                          placeholder="..."
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -5,17 +5,10 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { StatusDropdown } from "@/components/mission-card";
 import type { Mission } from "@shared/schema";
-
-const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "En attente", variant: "secondary" },
-  in_progress: { label: "En cours", variant: "default" },
-  completed: { label: "Terminée", variant: "outline" },
-  cancelled: { label: "Annulée", variant: "destructive" },
-};
 
 export default function MissionDetailPage() {
   const [, params] = useRoute("/missions/:id");
@@ -52,8 +45,6 @@ export default function MissionDetailPage() {
     );
   }
 
-  const status = statusConfig[mission.status] || statusConfig.pending;
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -68,9 +59,7 @@ export default function MissionDetailPage() {
               <h1 className="text-3xl font-bold tracking-tight" data-testid="text-mission-title">
                 {mission.title}
               </h1>
-              <Badge variant={status.variant} data-testid="badge-status">
-                {status.label}
-              </Badge>
+              <StatusDropdown mission={mission} />
             </div>
             <p className="text-muted-foreground mt-1">
               Référence: {mission.id.slice(0, 8).toUpperCase()}

@@ -2,13 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertMissionSchema, insertDocumentSchema, templateDataSchema } from "@shared/schema";
+import { requireAuth, requireAdmin, hashPassword } from "./auth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   // Get all missions
-  app.get("/api/missions", async (req, res) => {
+  app.get("/api/missions", requireAuth, async (req, res) => {
     try {
       const missions = await storage.getAllMissions();
       res.json(missions);
@@ -19,7 +20,7 @@ export async function registerRoutes(
   });
 
   // Get single mission
-  app.get("/api/missions/:id", async (req, res) => {
+  app.get("/api/missions/:id", requireAuth, async (req, res) => {
     try {
       const mission = await storage.getMission(req.params.id);
       if (!mission) {
@@ -33,7 +34,7 @@ export async function registerRoutes(
   });
 
   // Create mission
-  app.post("/api/missions", async (req, res) => {
+  app.post("/api/missions", requireAuth, async (req, res) => {
     try {
       const parsed = insertMissionSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -48,7 +49,7 @@ export async function registerRoutes(
   });
 
   // Update mission
-  app.patch("/api/missions/:id", async (req, res) => {
+  app.patch("/api/missions/:id", requireAuth, async (req, res) => {
     try {
       const parsed = insertMissionSchema.partial().safeParse(req.body);
       if (!parsed.success) {
@@ -66,7 +67,7 @@ export async function registerRoutes(
   });
 
   // Get template data for a mission
-  app.get("/api/missions/:id/template-data", async (req, res) => {
+  app.get("/api/missions/:id/template-data", requireAuth, async (req, res) => {
     try {
       const mission = await storage.getMission(req.params.id);
       if (!mission) {
@@ -83,7 +84,7 @@ export async function registerRoutes(
   });
 
   // Save template data for a mission
-  app.put("/api/missions/:id/template-data", async (req, res) => {
+  app.put("/api/missions/:id/template-data", requireAuth, async (req, res) => {
     try {
       const mission = await storage.getMission(req.params.id);
       if (!mission) {
@@ -125,7 +126,7 @@ export async function registerRoutes(
   });
 
   // Delete mission
-  app.delete("/api/missions/:id", async (req, res) => {
+  app.delete("/api/missions/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteMission(req.params.id);
       if (!deleted) {
@@ -139,7 +140,7 @@ export async function registerRoutes(
   });
 
   // Get all documents
-  app.get("/api/documents", async (req, res) => {
+  app.get("/api/documents", requireAuth, async (req, res) => {
     try {
       const documents = await storage.getAllDocuments();
       res.json(documents);
@@ -150,7 +151,7 @@ export async function registerRoutes(
   });
 
   // Get single document
-  app.get("/api/documents/:id", async (req, res) => {
+  app.get("/api/documents/:id", requireAuth, async (req, res) => {
     try {
       const document = await storage.getDocument(req.params.id);
       if (!document) {
@@ -164,7 +165,7 @@ export async function registerRoutes(
   });
 
   // Create document
-  app.post("/api/documents", async (req, res) => {
+  app.post("/api/documents", requireAuth, async (req, res) => {
     try {
       const parsed = insertDocumentSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -179,7 +180,7 @@ export async function registerRoutes(
   });
 
   // Update document
-  app.patch("/api/documents/:id", async (req, res) => {
+  app.patch("/api/documents/:id", requireAuth, async (req, res) => {
     try {
       const parsed = insertDocumentSchema.partial().safeParse(req.body);
       if (!parsed.success) {
@@ -197,7 +198,7 @@ export async function registerRoutes(
   });
 
   // Delete document
-  app.delete("/api/documents/:id", async (req, res) => {
+  app.delete("/api/documents/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteDocument(req.params.id);
       if (!deleted) {
@@ -211,7 +212,7 @@ export async function registerRoutes(
   });
 
   // Get signature by name
-  app.get("/api/signatures/:name", async (req, res) => {
+  app.get("/api/signatures/:name", requireAuth, async (req, res) => {
     try {
       const sig = await storage.getSignatureByName(req.params.name);
       if (!sig) {
@@ -225,7 +226,7 @@ export async function registerRoutes(
   });
 
   // Save signature for a name
-  app.put("/api/signatures/:name", async (req, res) => {
+  app.put("/api/signatures/:name", requireAuth, async (req, res) => {
     try {
       const { data } = req.body;
       if (!data) {
@@ -240,7 +241,7 @@ export async function registerRoutes(
   });
 
   // Get completed missions with reports for a given date
-  app.get("/api/extractions/daily", async (req, res) => {
+  app.get("/api/extractions/daily", requireAuth, async (req, res) => {
     try {
       const date = req.query.date as string;
       if (!date) {
@@ -251,6 +252,91 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching daily extraction:", error);
       res.status(500).json({ error: "Failed to fetch daily extraction" });
+    }
+  });
+
+  // ===== User management routes (admin only) =====
+
+  // Get all users
+  app.get("/api/users", requireAdmin, async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const safeUsers = allUsers.map(({ password, ...u }) => u);
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Create user
+  app.post("/api/users", requireAdmin, async (req, res) => {
+    try {
+      const { username, password, role, fullName, email, phone, address } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: "Identifiant et mot de passe requis" });
+      }
+      const existing = await storage.getUserByUsername(username);
+      if (existing) {
+        return res.status(409).json({ error: "Cet identifiant est déjà utilisé" });
+      }
+      const user = await storage.createUser({
+        username,
+        password: hashPassword(password),
+        role: role || "salarie",
+        fullName: fullName || "",
+        email: email || null,
+        phone: phone || null,
+        address: address || null,
+      });
+      const { password: _, ...safeUser } = user;
+      res.status(201).json(safeUser);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  // Update user
+  app.patch("/api/users/:id", requireAdmin, async (req, res) => {
+    try {
+      const { username, password, role, fullName, email, phone, address } = req.body;
+      const updateData: Record<string, any> = {};
+      if (username !== undefined) updateData.username = username;
+      if (password) updateData.password = hashPassword(password);
+      if (role !== undefined) updateData.role = role;
+      if (fullName !== undefined) updateData.fullName = fullName;
+      if (email !== undefined) updateData.email = email;
+      if (phone !== undefined) updateData.phone = phone;
+      if (address !== undefined) updateData.address = address;
+
+      const user = await storage.updateUser(req.params.id, updateData);
+      if (!user) {
+        return res.status(404).json({ error: "Utilisateur non trouvé" });
+      }
+      const { password: _, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+  // Delete user
+  app.delete("/api/users/:id", requireAdmin, async (req, res) => {
+    try {
+      // Prevent deleting self
+      if (req.params.id === req.user?.id) {
+        return res.status(400).json({ error: "Vous ne pouvez pas supprimer votre propre compte" });
+      }
+      const deleted = await storage.deleteUser(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Utilisateur non trouvé" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Failed to delete user" });
     }
   });
 

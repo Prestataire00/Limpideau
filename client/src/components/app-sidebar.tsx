@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 
-const menuItems = [
+const adminMenuItems = [
   {
     title: "Tableau de bord",
     url: "/",
@@ -38,11 +38,20 @@ const menuItems = [
   },
 ];
 
+const salarieMenuItems = [
+  {
+    title: "Missions",
+    url: "/missions",
+    icon: Briefcase,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
 
   const isAdmin = user?.role === "admin";
+  const menuItems = isAdmin ? adminMenuItems : salarieMenuItems;
 
   return (
     <Sidebar>
@@ -112,17 +121,19 @@ export function AppSidebar() {
             </div>
             <div className="flex-1 truncate">
               <p className="text-xs font-medium text-foreground truncate">{user.fullName || user.username}</p>
-              <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+              <p className="text-xs text-muted-foreground capitalize">{user.role === "admin" ? "Admin" : "Salarié"}</p>
             </div>
           </div>
         )}
         <div className="flex gap-2">
-          <Link href="/settings" className="flex-1">
-            <SidebarMenuButton className="w-full" data-testid="link-settings">
-              <Settings className="h-4 w-4" />
-              <span>Paramètres</span>
-            </SidebarMenuButton>
-          </Link>
+          {isAdmin && (
+            <Link href="/settings" className="flex-1">
+              <SidebarMenuButton className="w-full" data-testid="link-settings">
+                <Settings className="h-4 w-4" />
+                <span>Paramètres</span>
+              </SidebarMenuButton>
+            </Link>
+          )}
           <Button
             variant="ghost"
             size="icon"

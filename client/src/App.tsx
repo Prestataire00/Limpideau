@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -22,22 +22,35 @@ import SettingsPage from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import EmployeesPage from "@/pages/employees";
 
+function SalarieHome() {
+  return <Redirect to="/missions" />;
+}
+
 function Router() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
+      <Route path="/">
+        {isAdmin ? <Dashboard /> : <SalarieHome />}
+      </Route>
       <Route path="/missions" component={MissionsPage} />
       <Route path="/missions/new" component={MissionNewPage} />
       <Route path="/missions/:id" component={MissionDetailPage} />
       <Route path="/missions/:id/edit" component={MissionEditPage} />
       <Route path="/missions/:id/rapport" component={MissionRapportPage} />
-      <Route path="/extractions" component={ExtractionsPage} />
-      <Route path="/templates" component={TemplatesPage} />
-      <Route path="/settings" component={SettingsPage} />
+      <Route path="/extractions">
+        <AdminRoute><ExtractionsPage /></AdminRoute>
+      </Route>
+      <Route path="/templates">
+        <AdminRoute><TemplatesPage /></AdminRoute>
+      </Route>
+      <Route path="/settings">
+        <AdminRoute><SettingsPage /></AdminRoute>
+      </Route>
       <Route path="/employees">
-        <AdminRoute>
-          <EmployeesPage />
-        </AdminRoute>
+        <AdminRoute><EmployeesPage /></AdminRoute>
       </Route>
       <Route component={NotFound} />
     </Switch>

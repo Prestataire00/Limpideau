@@ -14,7 +14,13 @@
       "Bash(npx tsc:*)",
       "Bash(npx drizzle-kit:*)",
       "Bash(npm install:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(npm run:*)",
+      "Bash(git add:*)",
+      "Bash(gh auth:*)",
+      "Bash(which gh || apt-get install -y gh 2>&1 || snap install gh 2>&1)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -50,12 +50,10 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
           {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
           {copied ? "Copie" : "Copier"}
         </Button>
-        {mission.clientEmail && (
-          <Button variant="outline" size="sm" onClick={handleEmail}>
-            <Mail className="h-4 w-4 mr-2" />
-            Email
-          </Button>
-        )}
+        <Button variant="outline" size="sm" onClick={handleEmail}>
+          <Mail className="h-4 w-4 mr-2" />
+          Envoyer par mail
+        </Button>
         <Button variant="outline" size="sm" onClick={handlePrint}>
           <Printer className="h-4 w-4 mr-2" />
           Imprimer

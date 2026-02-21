@@ -430,10 +430,13 @@ export async function registerRoutes(
     }
   });
 
-  // Update report title
-  app.patch("/api/reports/:id", requireAdmin, async (req, res) => {
+  // Update report (title and/or status)
+  app.patch("/api/reports/:id", requireAuth, async (req, res) => {
     try {
-      const report = await storage.updateReport(req.params.id, { title: req.body.title });
+      const updates: Record<string, string> = {};
+      if (req.body.title) updates.title = req.body.title;
+      if (req.body.status) updates.status = req.body.status;
+      const report = await storage.updateReport(req.params.id, updates);
       if (!report) {
         return res.status(404).json({ error: "Report not found" });
       }

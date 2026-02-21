@@ -73,6 +73,11 @@ const seedMissions = [
 
 export async function seed() {
   try {
+    // Add status column to reports if it doesn't exist
+    await db.execute(
+      `ALTER TABLE reports ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'draft'`
+    );
+
     // Seed admin user if no users exist
     const existingUsers = await db.select().from(users).limit(1);
     if (existingUsers.length === 0) {

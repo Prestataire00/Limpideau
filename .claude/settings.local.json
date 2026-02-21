@@ -27,7 +27,11 @@
       "Bash(npx tsx:*)",
       "Bash(echo \"SELECT id, mission_id, title, created_at FROM reports;\" | psql \"$DATABASE_URL\" 2>&1)",
       "Bash(kill %1:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(echo === Status: in_progress ===:*)",
+      "Bash(fuser:*)",
+      "Bash(grep 5000:*)"
     ]
   }
 }

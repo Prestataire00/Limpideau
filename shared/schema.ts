@@ -116,6 +116,9 @@ export const templateDataSchema = z.object({
 
 export type TemplateData = z.infer<typeof templateDataSchema>;
 
+export const reportStatuses = ["draft", "in_progress", "completed", "validated"] as const;
+export type ReportStatus = typeof reportStatuses[number];
+
 export const missionStatuses = ["pending", "in_progress", "completed", "cancelled"] as const;
 export type MissionStatus = typeof missionStatuses[number];
 
@@ -206,6 +209,7 @@ export const reports = pgTable("reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   missionId: varchar("mission_id").notNull().references(() => missions.id, { onDelete: "cascade" }),
   title: text("title").notNull().default("Cuve 1"),
+  status: text("status").notNull().default("draft"),
   templateData: jsonb("template_data"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

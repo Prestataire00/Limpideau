@@ -21,7 +21,11 @@
       "Bash(which gh || apt-get install -y gh 2>&1 || snap install gh 2>&1)",
       "Bash(git remote:*)",
       "Bash(git push:*)",
-      "Bash(timeout 15 npx tsx:*)"
+      "Bash(timeout 15 npx tsx:*)",
+      "Bash(timeout 10 npx tsx:*)",
+      "Bash(echo \"\nCREATE TABLE IF NOT EXISTS reports \\(\n  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid\\(\\),\n  mission_id VARCHAR NOT NULL REFERENCES missions\\(id\\) ON DELETE CASCADE,\n  title TEXT NOT NULL DEFAULT 'Cuve 1',\n  template_data JSONB,\n  created_at TIMESTAMP NOT NULL DEFAULT NOW\\(\\),\n  updated_at TIMESTAMP NOT NULL DEFAULT NOW\\(\\)\n\\);\n\n-- Migrate existing templateData from missions to reports\nINSERT INTO reports \\(id, mission_id, title, template_data, created_at, updated_at\\)\nSELECT gen_random_uuid\\(\\), id, 'Cuve 1', template_data, created_at, updated_at\nFROM missions WHERE template_data IS NOT NULL\nON CONFLICT DO NOTHING;\n\" | psql \"$DATABASE_URL\" 2>&1)",
+      "Bash(npx tsx:*)",
+      "Bash(echo \"SELECT id, mission_id, title, created_at FROM reports;\" | psql \"$DATABASE_URL\" 2>&1)"
     ]
   }
 }

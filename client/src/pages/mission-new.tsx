@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
-import { MissionForm } from "@/components/mission-form";
+import { MissionForm, type InterventionDayEntry } from "@/components/mission-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -11,28 +12,37 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 export default function MissionNewPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [isCreating, setIsCreating] = useState(false);
 
-  const createMutation = useMutation({
-    mutationFn: (data: unknown) => apiRequest("POST", "/api/missions", data),
-    onSuccess: () => {
+  const handleSubmit = async (data: unknown, interventionDays?: InterventionDayEntry[]) => {
+    setIsCreating(true);
+    try {
+      const res = await apiRequest("POST", "/api/missions", data);
+      const mission = await res.json();
+
+      if (interventionDays && interventionDays.length > 0) {
+        await Promise.all(
+          interventionDays.map((day) =>
+            apiRequest("POST", `/api/missions/${mission.id}/intervention-days`, day)
+          )
+        );
+      }
+
       queryClient.invalidateQueries({ queryKey: ["/api/missions"] });
       toast({
         title: "Mission créée",
         description: "La mission a été créée avec succès.",
       });
       setLocation("/missions");
-    },
-    onError: () => {
+    } catch {
       toast({
         title: "Erreur",
         description: "Une erreur est survenue lors de la création.",
         variant: "destructive",
       });
-    },
-  });
-
-  const handleSubmit = (data: unknown) => {
-    createMutation.mutate(data);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -58,7 +68,7 @@ export default function MissionNewPage() {
           <CardTitle>Informations de la mission</CardTitle>
         </CardHeader>
         <CardContent>
-          <MissionForm onSubmit={handleSubmit} isLoading={createMutation.isPending} />
+          <MissionForm onSubmit={handleSubmit} isLoading={isCreating} />
         </CardContent>
       </Card>
     </div>

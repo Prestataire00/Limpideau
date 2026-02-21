@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMissionSchema, insertDocumentSchema, templateDataSchema, insertInterventionDaySchema } from "@shared/schema";
+import { insertMissionSchema, insertDocumentSchema, templateDataSchema, insertInterventionDaySchema, insertReportSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, hashPassword } from "./auth";
 import { sendReportEmail } from "./email";
 
@@ -367,6 +367,115 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // ===== Reports routes =====
+
+  // Get reports for a mission
+  app.get("/api/missions/:missionId/reports", requireAuth, async (req, res) => {
+    try {
+      const reports = await storage.getReportsByMission(req.params.missionId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+      res.status(500).json({ error: "Failed to fetch reports" });
+    }
+  });
+
+  // Get single report
+  app.get("/api/reports/:id", requireAuth, async (req, res) => {
+    try {
+      const report = await storage.getReport(req.params.id);
+      if (!report) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching report:", error);
+      res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
+  // Create report for a mission
+  app.post("/api/missions/:missionId/reports", requireAdmin, async (req, res) => {
+    try {
+      const report = await storage.createReport({
+        missionId: req.params.missionId,
+        title: req.body.title || "Cuve 1",
+      });
+      res.status(201).json(report);
+    } catch (error) {
+      console.error("Error creating report:", error);
+      res.status(500).json({ error: "Failed to create report" });
+    }
+  });
+
+  // Update report template data
+  app.put("/api/reports/:id/template-data", requireAuth, async (req, res) => {
+    try {
+      const report = await storage.getReport(req.params.id);
+      if (!report) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+      const parsed = templateDataSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid template data", details: parsed.error });
+      }
+      await storage.updateReport(req.params.id, { templateData: parsed.data });
+      res.json(parsed.data);
+    } catch (error) {
+      console.error("Error saving report template data:", error);
+      res.status(500).json({ error: "Failed to save report template data" });
+    }
+  });
+
+  // Update report title
+  app.patch("/api/reports/:id", requireAdmin, async (req, res) => {
+    try {
+      const report = await storage.updateReport(req.params.id, { title: req.body.title });
+      if (!report) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+      res.json(report);
+    } catch (error) {
+      console.error("Error updating report:", error);
+      res.status(500).json({ error: "Failed to update report" });
+    }
+  });
+
+  // Delete report
+  app.delete("/api/reports/:id", requireAdmin, async (req, res) => {
+    try {
+      const deleted = await storage.deleteReport(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting report:", error);
+      res.status(500).json({ error: "Failed to delete report" });
+    }
+  });
+
+  // Get daily reports (missions + their reports) for extractions
+  app.get("/api/extractions/daily-reports", requireAuth, async (req, res) => {
+    try {
+      const date = req.query.date as string;
+      if (!date) {
+        return res.status(400).json({ error: "Missing date parameter" });
+      }
+      const missions = await storage.getCompletedMissionsByDate(date);
+      const missionIds = missions.map((m) => m.id);
+      const reports = await storage.getReportsByMissionIds(missionIds);
+      const result = missions.map((m) => ({
+        ...m,
+        reports: reports.filter((r) => r.missionId === m.id),
+      }));
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching daily reports:", error);
+      res.status(500).json({ error: "Failed to fetch daily reports" });
     }
   });
 

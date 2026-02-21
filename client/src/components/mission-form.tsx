@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { z } from "zod";
@@ -28,8 +29,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Mission } from "@shared/schema";
+
+export interface InterventionDayEntry {
+  date: string; // yyyy-MM-dd
+  notes?: string;
+}
 
 const formSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
@@ -49,11 +56,17 @@ type FormData = z.infer<typeof formSchema>;
 
 interface MissionFormProps {
   mission?: Mission;
-  onSubmit: (data: FormData) => void;
+  onSubmit: (data: FormData, interventionDays?: InterventionDayEntry[]) => void;
   isLoading?: boolean;
+  initialInterventionDays?: InterventionDayEntry[];
 }
 
-export function MissionForm({ mission, onSubmit, isLoading }: MissionFormProps) {
+export function MissionForm({ mission, onSubmit, isLoading, initialInterventionDays = [] }: MissionFormProps) {
+  const [interventionDays, setInterventionDays] = useState<InterventionDayEntry[]>(initialInterventionDays);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerDate, setPickerDate] = useState<Date | undefined>(undefined);
+  const [pickerNotes, setPickerNotes] = useState("");
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -72,7 +85,21 @@ export function MissionForm({ mission, onSubmit, isLoading }: MissionFormProps) 
   });
 
   const handleSubmit = (data: FormData) => {
-    onSubmit(data);
+    onSubmit(data, interventionDays.length > 0 ? interventionDays : undefined);
+  };
+
+  const addInterventionDay = () => {
+    if (!pickerDate) return;
+    const dateStr = format(pickerDate, "yyyy-MM-dd");
+    if (interventionDays.some((d) => d.date === dateStr)) return;
+    setInterventionDays([...interventionDays, { date: dateStr, notes: pickerNotes || undefined }]);
+    setPickerDate(undefined);
+    setPickerNotes("");
+    setPickerOpen(false);
+  };
+
+  const removeInterventionDay = (dateStr: string) => {
+    setInterventionDays(interventionDays.filter((d) => d.date !== dateStr));
   };
 
   return (
@@ -314,6 +341,75 @@ export function MissionForm({ mission, onSubmit, isLoading }: MissionFormProps) 
             </FormItem>
           )}
         />
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="flex items-center gap-2 text-sm font-medium">
+              <CalendarDays className="h-4 w-4" />
+              Jours d'intervention
+            </Label>
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <div className="p-3 space-y-3">
+                  <Calendar
+                    mode="single"
+                    selected={pickerDate}
+                    onSelect={setPickerDate}
+                    locale={fr}
+                  />
+                  <Input
+                    placeholder="Notes (optionnel)"
+                    value={pickerNotes}
+                    onChange={(e) => setPickerNotes(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={addInterventionDay}
+                    disabled={!pickerDate}
+                  >
+                    Confirmer
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+          {interventionDays.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucun jour d'intervention planifié.</p>
+          ) : (
+            <div className="space-y-2">
+              {interventionDays
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .map((day) => (
+                  <div key={day.date} className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
+                    <div>
+                      <span className="font-medium">
+                        {format(new Date(day.date + "T00:00:00"), "EEEE d MMMM yyyy", { locale: fr })}
+                      </span>
+                      {day.notes && (
+                        <span className="text-muted-foreground ml-2">— {day.notes}</span>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeInterventionDay(day.date)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
 
         <div className="flex justify-end gap-3">
           <Button type="submit" disabled={isLoading} data-testid="button-submit">

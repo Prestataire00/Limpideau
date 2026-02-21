@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, Edit, ClipboardList, Calendar as CalendarIcon, MapPin, User, Mail, Phone, Euro, Plus, Trash2, CalendarDays } from "lucide-react";
+import { ArrowLeft, Edit, Calendar as CalendarIcon, MapPin, User, Mail, Phone, Euro, Plus, Trash2, CalendarDays, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { StatusDropdown, StatusBadge } from "@/components/mission-card";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Mission, InterventionDay } from "@shared/schema";
+import type { Mission, InterventionDay, Report } from "@shared/schema";
 
 export default function MissionDetailPage() {
   const [, params] = useRoute("/missions/:id");
@@ -31,6 +31,11 @@ export default function MissionDetailPage() {
 
   const { data: interventionDaysList = [] } = useQuery<InterventionDay[]>({
     queryKey: [`/api/missions/${missionId}/intervention-days`],
+    enabled: !!missionId,
+  });
+
+  const { data: reportsList = [] } = useQuery<Report[]>({
+    queryKey: [`/api/missions/${missionId}/reports`],
     enabled: !!missionId,
   });
 
@@ -58,6 +63,34 @@ export default function MissionDetailPage() {
     },
     onError: () => {
       toast({ title: "Erreur", description: "Impossible de supprimer ce jour", variant: "destructive" });
+    },
+  });
+
+  const createReportMutation = useMutation({
+    mutationFn: async () => {
+      const title = `Cuve ${reportsList.length + 1}`;
+      const res = await apiRequest("POST", `/api/missions/${missionId}/reports`, { title });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/missions/${missionId}/reports`] });
+      toast({ title: "Rapport créé" });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de créer le rapport", variant: "destructive" });
+    },
+  });
+
+  const deleteReportMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/reports/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/missions/${missionId}/reports`] });
+      toast({ title: "Rapport supprimé" });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de supprimer le rapport", variant: "destructive" });
     },
   });
 
@@ -109,12 +142,6 @@ export default function MissionDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Link href={`/missions/${mission.id}/rapport`}>
-            <Button variant="outline" data-testid="button-rapport">
-              <ClipboardList className="h-4 w-4 mr-2" />
-              Rapport Reservoir
-            </Button>
-          </Link>
           {isAdmin && (
             <Link href={`/missions/${mission.id}/edit`}>
               <Button data-testid="button-edit">
@@ -169,38 +196,40 @@ export default function MissionDetailPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5" />
-                Jours d'intervention
+                <FileText className="h-5 w-5" />
+                Rapports
               </CardTitle>
               {isAdmin && (
-                <InterventionDayPicker
-                  onAdd={(date, notes) => createDayMutation.mutate({ date, notes })}
-                  isPending={createDayMutation.isPending}
-                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => createReportMutation.mutate()}
+                  disabled={createReportMutation.isPending}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter
+                </Button>
               )}
             </CardHeader>
             <CardContent>
-              {interventionDaysList.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun jour d'intervention planifié.</p>
+              {reportsList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun rapport. {isAdmin ? "Cliquez sur Ajouter pour créer un rapport." : ""}</p>
               ) : (
                 <div className="space-y-2">
-                  {interventionDaysList.map((day) => (
-                    <div key={day.id} className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
-                      <div>
-                        <span className="font-medium">
-                          {format(new Date(day.date + "T00:00:00"), "EEEE d MMMM yyyy", { locale: fr })}
+                  {reportsList.map((report) => (
+                    <div key={report.id} className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
+                      <Link href={`/missions/${missionId}/rapports/${report.id}`}>
+                        <span className="font-medium text-primary hover:underline cursor-pointer">
+                          {report.title}
                         </span>
-                        {day.notes && (
-                          <span className="text-muted-foreground ml-2">— {day.notes}</span>
-                        )}
-                      </div>
+                      </Link>
                       {isAdmin && (
                         <Button
                           variant="ghost"
                           size="icon"
                           className="shrink-0 h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => deleteDayMutation.mutate(day.id)}
-                          disabled={deleteDayMutation.isPending}
+                          onClick={() => deleteReportMutation.mutate(report.id)}
+                          disabled={deleteReportMutation.isPending}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -211,6 +240,7 @@ export default function MissionDetailPage() {
               )}
             </CardContent>
           </Card>
+
         </div>
 
         <div className="space-y-6">
@@ -255,6 +285,52 @@ export default function MissionDetailPage() {
                 <span className="text-muted-foreground">Modifiée le</span>
                 <span>{format(new Date(mission.updatedAt), "d MMM yyyy", { locale: fr })}</span>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5" />
+                Jours d'intervention
+              </CardTitle>
+              {isAdmin && (
+                <InterventionDayPicker
+                  onAdd={(date, notes) => createDayMutation.mutate({ date, notes })}
+                  isPending={createDayMutation.isPending}
+                />
+              )}
+            </CardHeader>
+            <CardContent>
+              {interventionDaysList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun jour d'intervention planifié.</p>
+              ) : (
+                <div className="space-y-2">
+                  {interventionDaysList.map((day) => (
+                    <div key={day.id} className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
+                      <div>
+                        <span className="font-medium">
+                          {format(new Date(day.date + "T00:00:00"), "EEEE d MMMM yyyy", { locale: fr })}
+                        </span>
+                        {day.notes && (
+                          <span className="text-muted-foreground ml-2">— {day.notes}</span>
+                        )}
+                      </div>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteDayMutation.mutate(day.id)}
+                          disabled={deleteDayMutation.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

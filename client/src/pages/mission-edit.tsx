@@ -1,50 +1,76 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation, Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
-import { MissionForm } from "@/components/mission-form";
+import { MissionForm, type InterventionDayEntry } from "@/components/mission-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Mission } from "@shared/schema";
+import type { Mission, InterventionDay } from "@shared/schema";
 
 export default function MissionEditPage() {
   const [, params] = useRoute("/missions/:id/edit");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const missionId = params?.id;
+  const [isSaving, setIsSaving] = useState(false);
 
   const { data: mission, isLoading } = useQuery<Mission>({
     queryKey: ["/api/missions", missionId],
     enabled: !!missionId,
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (data: unknown) => apiRequest("PATCH", `/api/missions/${missionId}`, data),
-    onSuccess: () => {
+  const { data: existingDays = [], isLoading: daysLoading } = useQuery<InterventionDay[]>({
+    queryKey: [`/api/missions/${missionId}/intervention-days`],
+    enabled: !!missionId,
+  });
+
+  const initialInterventionDays = useMemo<InterventionDayEntry[]>(
+    () => existingDays.map((d) => ({ date: d.date, notes: d.notes || undefined })),
+    [existingDays]
+  );
+
+  const handleSubmit = async (data: unknown, interventionDays?: InterventionDayEntry[]) => {
+    setIsSaving(true);
+    try {
+      await apiRequest("PATCH", `/api/missions/${missionId}`, data);
+
+      if (interventionDays !== undefined) {
+        // Delete removed days
+        const newDateSet = new Set(interventionDays.map((d) => d.date));
+        const toDelete = existingDays.filter((d) => !newDateSet.has(d.date));
+        await Promise.all(toDelete.map((d) => apiRequest("DELETE", `/api/intervention-days/${d.id}`)));
+
+        // Add new days
+        const existingDateSet = new Set(existingDays.map((d) => d.date));
+        const toAdd = interventionDays.filter((d) => !existingDateSet.has(d.date));
+        await Promise.all(
+          toAdd.map((day) => apiRequest("POST", `/api/missions/${missionId}/intervention-days`, day))
+        );
+      }
+
       queryClient.invalidateQueries({ queryKey: ["/api/missions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/missions", missionId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/missions/${missionId}/intervention-days`] });
       toast({
         title: "Mission mise à jour",
         description: "Les modifications ont été enregistrées.",
       });
       setLocation(`/missions/${missionId}`);
-    },
-    onError: () => {
+    } catch {
       toast({
         title: "Erreur",
         description: "Une erreur est survenue lors de la mise à jour.",
         variant: "destructive",
       });
-    },
-  });
-
-  const handleSubmit = (data: unknown) => {
-    updateMutation.mutate(data);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  if (isLoading) {
+  if (isLoading || daysLoading) {
     return (
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-4">
@@ -93,7 +119,7 @@ export default function MissionEditPage() {
           <CardTitle>Informations de la mission</CardTitle>
         </CardHeader>
         <CardContent>
-          <MissionForm mission={mission} onSubmit={handleSubmit} isLoading={updateMutation.isPending} />
+          <MissionForm mission={mission} onSubmit={handleSubmit} isLoading={isSaving} initialInterventionDays={initialInterventionDays} />
         </CardContent>
       </Card>
     </div>

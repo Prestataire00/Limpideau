@@ -40,11 +40,11 @@ function Router() {
       <Route path="/missions/new">
         <AdminRoute><MissionNewPage /></AdminRoute>
       </Route>
+      <Route path="/missions/:missionId/rapports/:reportId" component={MissionRapportPage} />
       <Route path="/missions/:id" component={MissionDetailPage} />
       <Route path="/missions/:id/edit">
         <AdminRoute><MissionEditPage /></AdminRoute>
       </Route>
-      <Route path="/missions/:id/rapport" component={MissionRapportPage} />
       <Route path="/calendrier" component={CalendrierPage} />
       <Route path="/extractions">
         <AdminRoute><ExtractionsPage /></AdminRoute>

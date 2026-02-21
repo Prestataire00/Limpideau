@@ -9,11 +9,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { RapportForm } from "@/components/rapport-form";
 import { RapportTemplate } from "@/components/rapport-template";
 import { templateDataSchema, type TemplateData } from "@shared/schema";
-import type { Mission } from "@shared/schema";
+import type { Mission, Report } from "@shared/schema";
 
 export default function MissionRapportPage() {
-  const [, params] = useRoute("/missions/:id/rapport");
-  const missionId = params?.id;
+  const [, params] = useRoute("/missions/:missionId/rapports/:reportId");
+  const missionId = params?.missionId;
+  const reportId = params?.reportId;
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -22,20 +23,19 @@ export default function MissionRapportPage() {
     enabled: !!missionId,
   });
 
-  const { data: templateData, isLoading: templateLoading } = useQuery<TemplateData>({
-    queryKey: ["/api/missions", missionId, "template-data"],
-    enabled: !!missionId,
+  const { data: report, isLoading: reportLoading } = useQuery<Report>({
+    queryKey: ["/api/reports", reportId],
+    enabled: !!reportId,
   });
 
   const saveMutation = useMutation({
     mutationFn: async (data: TemplateData) => {
-      const res = await apiRequest("PUT", `/api/missions/${missionId}/template-data`, data);
+      const res = await apiRequest("PUT", `/api/reports/${reportId}/template-data`, data);
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/missions", missionId, "template-data"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/missions", missionId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/missions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports", reportId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/missions/${missionId}/reports`] });
       toast({ title: "Enregistre", description: "Les donnees du rapport ont ete sauvegardees." });
     },
     onError: () => {
@@ -43,7 +43,7 @@ export default function MissionRapportPage() {
     },
   });
 
-  const isLoading = missionLoading || templateLoading;
+  const isLoading = missionLoading || reportLoading;
 
   if (isLoading) {
     return (
@@ -57,21 +57,21 @@ export default function MissionRapportPage() {
     );
   }
 
-  if (!mission) {
+  if (!mission || !report) {
     return (
       <div className="p-6">
         <div className="flex flex-col items-center justify-center py-12">
-          <h2 className="text-xl font-semibold mb-2">Mission non trouvee</h2>
-          <p className="text-muted-foreground mb-4">Cette mission n'existe pas ou a ete supprimee.</p>
-          <Link href="/missions">
-            <Button>Retour aux missions</Button>
+          <h2 className="text-xl font-semibold mb-2">Rapport non trouvé</h2>
+          <p className="text-muted-foreground mb-4">Ce rapport n'existe pas ou a été supprimé.</p>
+          <Link href={missionId ? `/missions/${missionId}` : "/missions"}>
+            <Button>Retour</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  const defaultData = templateDataSchema.parse(templateData || {});
+  const defaultData = templateDataSchema.parse(report.templateData || {});
 
   return (
     <div className="p-6 space-y-6">
@@ -85,7 +85,7 @@ export default function MissionRapportPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
               <FileText className="h-7 w-7" />
-              Rapport Reservoir
+              Rapport - {report.title}
             </h1>
             <p className="text-muted-foreground mt-1">{mission.title}</p>
           </div>

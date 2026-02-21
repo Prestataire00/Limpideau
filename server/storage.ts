@@ -1,6 +1,6 @@
-import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents, type Signature, signatures, type User, type InsertUser, users, type InterventionDay, type InsertInterventionDay, interventionDays } from "@shared/schema";
+import { type Mission, type InsertMission, missions, type Document, type InsertDocument, documents, type Signature, signatures, type User, type InsertUser, users, type InterventionDay, type InsertInterventionDay, interventionDays, type Report, type InsertReport, reports } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, and, gte, lte, lt, isNotNull } from "drizzle-orm";
+import { eq, desc, asc, and, gte, lte, lt, isNotNull, inArray } from "drizzle-orm";
 
 export interface IStorage {
   getAllMissions(): Promise<Mission[]>;
@@ -30,6 +30,13 @@ export interface IStorage {
   getInterventionDaysByDateRange(start: string, end: string): Promise<InterventionDay[]>;
   createInterventionDay(data: InsertInterventionDay): Promise<InterventionDay>;
   deleteInterventionDay(id: string): Promise<boolean>;
+
+  getReportsByMission(missionId: string): Promise<Report[]>;
+  getReport(id: string): Promise<Report | undefined>;
+  createReport(data: InsertReport): Promise<Report>;
+  updateReport(id: string, data: Partial<InsertReport>): Promise<Report | undefined>;
+  deleteReport(id: string): Promise<boolean>;
+  getReportsByMissionIds(missionIds: string[]): Promise<Report[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -181,6 +188,43 @@ export class DatabaseStorage implements IStorage {
   async deleteInterventionDay(id: string): Promise<boolean> {
     const result = await db.delete(interventionDays).where(eq(interventionDays.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getReportsByMission(missionId: string): Promise<Report[]> {
+    return db.select().from(reports)
+      .where(eq(reports.missionId, missionId))
+      .orderBy(asc(reports.createdAt));
+  }
+
+  async getReport(id: string): Promise<Report | undefined> {
+    const [report] = await db.select().from(reports).where(eq(reports.id, id));
+    return report;
+  }
+
+  async createReport(data: InsertReport): Promise<Report> {
+    const [created] = await db.insert(reports).values(data).returning();
+    return created;
+  }
+
+  async updateReport(id: string, data: Partial<InsertReport>): Promise<Report | undefined> {
+    const [updated] = await db
+      .update(reports)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(reports.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteReport(id: string): Promise<boolean> {
+    const result = await db.delete(reports).where(eq(reports.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getReportsByMissionIds(missionIds: string[]): Promise<Report[]> {
+    if (missionIds.length === 0) return [];
+    return db.select().from(reports)
+      .where(inArray(reports.missionId, missionIds))
+      .orderBy(asc(reports.createdAt));
   }
 }
 

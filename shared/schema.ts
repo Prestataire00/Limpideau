@@ -201,3 +201,21 @@ export const insertInterventionDaySchema = createInsertSchema(interventionDays).
 
 export type InterventionDay = typeof interventionDays.$inferSelect;
 export type InsertInterventionDay = z.infer<typeof insertInterventionDaySchema>;
+
+export const reports = pgTable("reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  missionId: varchar("mission_id").notNull().references(() => missions.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("Cuve 1"),
+  templateData: jsonb("template_data"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertReportSchema = createInsertSchema(reports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Report = typeof reports.$inferSelect;
+export type InsertReport = z.infer<typeof insertReportSchema>;

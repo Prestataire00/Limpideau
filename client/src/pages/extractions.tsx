@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/mission-card";
 import { useToast } from "@/hooks/use-toast";
 import { templateDataSchema, visiteEquipements, type TemplateData } from "@shared/schema";
-import type { Mission } from "@shared/schema";
+import type { Mission, Report } from "@shared/schema";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import suezLogo from "@assets/image_1771672165186.png";
+
+type MissionWithReports = Mission & { reports: Report[] };
 
 export default function ExtractionsPage() {
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
@@ -21,19 +23,28 @@ export default function ExtractionsPage() {
   const renderRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const { data: missions, isLoading } = useQuery<Mission[]>({
-    queryKey: ["/api/extractions/daily", selectedDate],
+  const { data: missionsWithReports, isLoading } = useQuery<MissionWithReports[]>({
+    queryKey: ["/api/extractions/daily-reports", selectedDate],
     queryFn: async () => {
-      const res = await fetch(`/api/extractions/daily?date=${selectedDate}`);
+      const res = await fetch(`/api/extractions/daily-reports?date=${selectedDate}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
     enabled: !!selectedDate,
   });
 
-  const completedMissions = (missions || []).filter(
-    (m) => m.templateData
+  const completedMissions = (missionsWithReports || []).filter(
+    (m) => m.reports.length > 0
   );
+
+  // Flatten missions+reports into exportable items
+  const allReportItems: { mission: MissionWithReports; report: Report; td: TemplateData }[] = [];
+  for (const mission of completedMissions) {
+    for (const report of mission.reports) {
+      const td = templateDataSchema.parse(report.templateData || {});
+      allReportItems.push({ mission, report, td });
+    }
+  }
 
   const isDateExported = (date: string) => {
     const exported: string[] = JSON.parse(localStorage.getItem("limpideau-exported-dates") || "[]");
@@ -44,7 +55,6 @@ export default function ExtractionsPage() {
     const exported: string[] = JSON.parse(localStorage.getItem("limpideau-exported-dates") || "[]");
     if (!exported.includes(date)) {
       exported.push(date);
-      // Garder uniquement les 90 derniers jours
       if (exported.length > 90) exported.splice(0, exported.length - 90);
       localStorage.setItem("limpideau-exported-dates", JSON.stringify(exported));
     }
@@ -52,68 +62,70 @@ export default function ExtractionsPage() {
 
   const alreadyExported = isDateExported(selectedDate);
 
+  const generatePdfForReport = async (
+    container: HTMLDivElement,
+    td: TemplateData,
+    mission: Mission,
+    pdf: jsPDF,
+    addPage: boolean
+  ) => {
+    container.innerHTML = renderRapportHtml(td, mission);
+
+    const imgs = container.querySelectorAll("img");
+    await Promise.all(
+      Array.from(imgs).map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete) return resolve();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          })
+      )
+    );
+    await new Promise((r) => setTimeout(r, 200));
+
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+    });
+
+    const imgWidth = 210;
+    const pageHeight = 297;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    if (addPage) pdf.addPage();
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position -= pageHeight;
+      pdf.addPage();
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+  };
+
   const handleExportAll = useCallback(async () => {
-    if (!completedMissions.length) return;
+    if (!allReportItems.length) return;
     setGenerating(true);
 
     try {
       const pdf = new jsPDF("p", "mm", "a4");
-      let firstPage = true;
+      const container = renderRef.current;
+      if (!container) return;
 
-      for (const mission of completedMissions) {
-        const td = templateDataSchema.parse(mission.templateData || {});
-
-        // Render the rapport off-screen
-        const container = renderRef.current;
-        if (!container) continue;
-
-        container.innerHTML = renderRapportHtml(td, mission);
-
-        // Wait for images to load
-        const imgs = container.querySelectorAll("img");
-        await Promise.all(
-          Array.from(imgs).map(
-            (img) =>
-              new Promise<void>((resolve) => {
-                if (img.complete) return resolve();
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-              })
-          )
-        );
-
-        // Small delay for rendering
-        await new Promise((r) => setTimeout(r, 200));
-
-        const canvas = await html2canvas(container, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-        });
-
-        const imgWidth = 210;
-        const pageHeight = 297;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        if (!firstPage) pdf.addPage();
-        firstPage = false;
-
-        let heightLeft = imgHeight;
-        let position = 0;
-
-        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-
-        while (heightLeft > 0) {
-          position -= pageHeight;
-          pdf.addPage();
-          pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
-        }
+      let first = true;
+      for (const { mission, td } of allReportItems) {
+        await generatePdfForReport(container, td, mission, pdf, !first);
+        first = false;
       }
 
-      // Clear the off-screen container
-      if (renderRef.current) renderRef.current.innerHTML = "";
+      container.innerHTML = "";
 
       const blob = pdf.output("blob");
       const url = URL.createObjectURL(blob);
@@ -126,7 +138,7 @@ export default function ExtractionsPage() {
       markDateExported(selectedDate);
       toast({
         title: "Extraction terminee",
-        description: `${completedMissions.length} rapport(s) exporte(s) en PDF.`,
+        description: `${allReportItems.length} rapport(s) exporte(s) en PDF.`,
       });
     } catch (_e) {
       toast({
@@ -137,15 +149,15 @@ export default function ExtractionsPage() {
     } finally {
       setGenerating(false);
     }
-  }, [completedMissions, selectedDate, toast]);
+  }, [allReportItems, selectedDate, toast]);
 
-  // Auto-export une seule fois par jour (uniquement pour aujourd'hui)
+  // Auto-export once per day (today only)
   const autoExportTriggered = useRef(false);
   useEffect(() => {
     const today = format(new Date(), "yyyy-MM-dd");
     if (
       selectedDate === today &&
-      completedMissions.length > 0 &&
+      allReportItems.length > 0 &&
       !isLoading &&
       !generating &&
       !autoExportTriggered.current &&
@@ -154,61 +166,24 @@ export default function ExtractionsPage() {
       autoExportTriggered.current = true;
       handleExportAll();
     }
-  }, [selectedDate, completedMissions, isLoading, generating, handleExportAll]);
+  }, [selectedDate, allReportItems, isLoading, generating, handleExportAll]);
 
-  const handleExportSingle = async (mission: Mission) => {
+  const handleExportSingle = async (mission: MissionWithReports, report: Report) => {
     setGenerating(true);
     try {
-      const td = templateDataSchema.parse(mission.templateData || {});
+      const td = templateDataSchema.parse(report.templateData || {});
       const container = renderRef.current;
       if (!container) return;
 
-      container.innerHTML = renderRapportHtml(td, mission);
-
-      const imgs = container.querySelectorAll("img");
-      await Promise.all(
-        Array.from(imgs).map(
-          (img) =>
-            new Promise<void>((resolve) => {
-              if (img.complete) return resolve();
-              img.onload = () => resolve();
-              img.onerror = () => resolve();
-            })
-        )
-      );
-      await new Promise((r) => setTimeout(r, 200));
-
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-      });
-
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       const pdf = new jsPDF("p", "mm", "a4");
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
+      await generatePdfForReport(container, td, mission, pdf, false);
       container.innerHTML = "";
 
       const blob = pdf.output("blob");
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Rapport_${td.nomReservoir || "Reservoir"}_${td.date || selectedDate}.pdf`;
+      a.download = `Rapport_${td.nomReservoir || report.title}_${td.date || selectedDate}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -248,7 +223,7 @@ export default function ExtractionsPage() {
             </div>
             <Button
               onClick={handleExportAll}
-              disabled={generating || !completedMissions.length}
+              disabled={generating || !allReportItems.length}
               size="lg"
             >
               {generating ? (
@@ -259,8 +234,8 @@ export default function ExtractionsPage() {
               {generating
                 ? "Generation en cours..."
                 : alreadyExported
-                  ? `Re-exporter (${completedMissions.length})`
-                  : `Exporter tout (${completedMissions.length})`}
+                  ? `Re-exporter (${allReportItems.length})`
+                  : `Exporter tout (${allReportItems.length})`}
             </Button>
             {alreadyExported && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800">
@@ -277,7 +252,7 @@ export default function ExtractionsPage() {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : completedMissions.length === 0 ? (
+      ) : allReportItems.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -291,47 +266,44 @@ export default function ExtractionsPage() {
       ) : (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">
-            {completedMissions.length} rapport(s) pour le{" "}
+            {allReportItems.length} rapport(s) pour le{" "}
             {format(new Date(selectedDate + "T00:00:00"), "d MMMM yyyy", { locale: fr })}
           </h2>
-          {completedMissions.map((mission) => {
-            const td = templateDataSchema.parse(mission.templateData || {});
-            return (
-              <Card key={mission.id}>
-                <CardContent className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{mission.title}</h3>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
-                        {td.commune && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {td.commune}
-                          </span>
-                        )}
-                        {td.nomReservoir && (
-                          <span>Reservoir : {td.nomReservoir}</span>
-                        )}
-                        <StatusBadge status="completed" />
-                      </div>
+          {allReportItems.map(({ mission, report, td }) => (
+            <Card key={report.id}>
+              <CardContent className="flex items-center justify-between py-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">{mission.title} - {report.title}</h3>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+                      {td.commune && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {td.commune}
+                        </span>
+                      )}
+                      {td.nomReservoir && (
+                        <span>Reservoir : {td.nomReservoir}</span>
+                      )}
+                      <StatusBadge status="completed" />
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleExportSingle(mission)}
-                    disabled={generating}
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    PDF
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExportSingle(mission, report)}
+                  disabled={generating}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  PDF
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 

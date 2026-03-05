@@ -69,11 +69,9 @@ export const templateDataSchema = z.object({
   motifAutres: z.string().default(""),
   typeChimique: z.boolean().default(false),
   typeAutres: z.string().default(""),
-  produitsEmployes: z.preprocess(
-    (val) => Array.isArray(val) ? val : typeof val === "string" && val ? [val] : [],
-    z.array(z.string())
-  ).default([]),
-  quantite: z.string().default(""),
+  quantiteHerli: z.string().default(""),
+  quantitePanox: z.string().default(""),
+  quantiteChlore: z.string().default(""),
 
   // Intervenants
   equipeLDE: z.boolean().default(false),

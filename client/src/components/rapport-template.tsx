@@ -121,7 +121,6 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
   const toArray = (val: unknown): string[] =>
     Array.isArray(val) ? val : typeof val === "string" && val ? [val] : [];
 
-  const produits = toArray(data.produitsEmployes);
   const agents = toArray(data.nomsAgents);
   const entreprises = toArray(data.nomsEntreprises);
   const pAvant = toArray(data.photosAvant);
@@ -301,12 +300,19 @@ export function RapportTemplate({ mission, data }: RapportTemplateProps) {
               <td className="border border-black p-2">
                 <div className="text-xs font-bold">Produits employes</div>
                 <div className="text-sm">
-                  {produits.length > 0
-                    ? produits.map((p, i) => <div key={i}>- {p}</div>)
-                    : ""}
+                  <div>- Herli rapide tw fcm1</div>
+                  <div>- Panox</div>
+                  <div>- Chlore</div>
                 </div>
               </td>
-              <Td label="Quantite" value={data.quantite} />
+              <td className="border border-black p-2">
+                <div className="text-xs font-bold">Quantite</div>
+                <div className="text-sm">
+                  <div>{data.quantiteHerli || ""}</div>
+                  <div>{data.quantitePanox || ""}</div>
+                  <div>{data.quantiteChlore || ""}</div>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -557,8 +563,10 @@ function generateText(data: TemplateData): string {
     `Motif - Autres: ${data.motifAutres || "-"}`,
     `Type - Chimique: ${data.typeChimique ? "Oui" : "Non"}`,
     `Type - Autres: ${data.typeAutres || "-"}`,
-    `Produits employes: ${toArr(data.produitsEmployes).join(", ") || "-"}`,
-    `Quantite: ${data.quantite || "-"}`,
+    `Produits employes:`,
+    `  - Herli rapide tw fcm1: ${data.quantiteHerli || "-"}`,
+    `  - Panox: ${data.quantitePanox || "-"}`,
+    `  - Chlore: ${data.quantiteChlore || "-"}`,
     "",
     "=== INTERVENANTS ===",
     `Equipe LDE: ${data.equipeLDE ? "Oui" : "Non"}`,

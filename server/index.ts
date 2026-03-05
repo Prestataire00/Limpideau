@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
 import { seed } from "./seed";
+import { startScheduler } from "./scheduler";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -104,6 +105,7 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      startScheduler();
     },
   );
 })();

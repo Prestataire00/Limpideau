@@ -26,7 +26,6 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
   const toArray = (val: unknown): string[] =>
     Array.isArray(val) ? val : typeof val === "string" && val ? [val] : [];
 
-  const produitsEmployes = toArray(watch("produitsEmployes"));
   const nomsAgents = toArray(watch("nomsAgents"));
   const nomsEntreprises = toArray(watch("nomsEntreprises"));
   const photosAvant = toArray(watch("photosAvant"));
@@ -129,47 +128,23 @@ export function RapportForm({ defaultValues, onSubmit, isPending }: RapportFormP
             </div>
           </div>
 
-          {/* Produits employes - liste dynamique */}
+          {/* Produits employes - 3 produits fixes */}
           <div className="space-y-2">
             <Label>Produits employes</Label>
-            <div className="space-y-2">
-              {produitsEmployes.map((produit, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Input
-                    value={produit}
-                    onChange={(e) => {
-                      const updated = [...produitsEmployes];
-                      updated[index] = e.target.value;
-                      setValue("produitsEmployes", updated);
-                    }}
-                    placeholder={`Produit ${index + 1}`}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={() => setValue("produitsEmployes", produitsEmployes.filter((_, i) => i !== index))}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setValue("produitsEmployes", [...produitsEmployes, ""])}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Ajouter un produit
-              </Button>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium min-w-[180px]">Herli rapide tw fcm1</span>
+                <Input {...register("quantiteHerli")} placeholder="Quantite" className="max-w-[200px]" />
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium min-w-[180px]">Panox</span>
+                <Input {...register("quantitePanox")} placeholder="Quantite" className="max-w-[200px]" />
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium min-w-[180px]">Chlore</span>
+                <Input {...register("quantiteChlore")} placeholder="Quantite" className="max-w-[200px]" />
+              </div>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="quantite">Quantite</Label>
-            <Input id="quantite" {...register("quantite")} placeholder="Quantite utilisee" />
           </div>
         </CardContent>
       </Card>

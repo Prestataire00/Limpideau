@@ -327,7 +327,6 @@ function renderRapportHtml(data: TemplateData, mission: Mission): string {
   const toArray = (val: unknown): string[] =>
     Array.isArray(val) ? val : typeof val === "string" && val ? [val] : [];
 
-  const produits = toArray(data.produitsEmployes);
   const agents = toArray(data.nomsAgents);
   const entreprises = toArray(data.nomsEntreprises);
   const pAvant = toArray(data.photosAvant);
@@ -419,9 +418,12 @@ function renderRapportHtml(data: TemplateData, mission: Mission): string {
         <tr>
           <td style="border:1px solid black;padding:6px 8px;">
             <div style="font-size:10px;font-weight:bold;">Produits employes</div>
-            <div style="font-size:12px;">${produits.length ? produits.map((p) => "- " + p).join("<br/>") : ""}</div>
+            <div style="font-size:12px;">- Herli rapide tw fcm1<br/>- Panox<br/>- Chlore</div>
           </td>
-          ${tdCell("Quantite", data.quantite)}
+          <td style="border:1px solid black;padding:6px 8px;">
+            <div style="font-size:10px;font-weight:bold;">Quantite</div>
+            <div style="font-size:12px;">${data.quantiteHerli || ""}<br/>${data.quantitePanox || ""}<br/>${data.quantiteChlore || ""}</div>
+          </td>
         </tr>
       </table>
 
